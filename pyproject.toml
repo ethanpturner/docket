@@ -1,0 +1,59 @@
+[project]
+name = "docket"
+version = "0.1.0"
+description = "Records the disposition of a security finding: exploitable, not exploitable, or undetermined, with the evidence behind it"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Ethan Turner", email = "ethanpturner@gmail.com" }]
+requires-python = ">=3.14"
+# Phase 0 reads JSON, SARIF, and text, resolves paths, and hashes bytes. The standard library
+# does all four. A dependency here would be a dependency in every environment that wants to check
+# whether a finding points at real code, which is the one thing this phase is for.
+dependencies = []
+
+[project.scripts]
+docket = "docket:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["mypy>=1.18.0", "pytest>=8.4.0", "ruff>=0.14.0", "pre-commit>=4.0.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+
+[tool.mypy]
+python_version = "3.14"
+files = ["src", "tests", "scripts"]
+strict = true
+warn_unreachable = true
+
+# Tests take pytest fixtures, which mypy cannot type without stubs for every fixture. Typing the
+# fixtures would be work that finds no bug; the code under test is strict.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "TC", "PTH", "RUF", "S",
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "TC"]
+"scripts/**" = ["S101", "TC"]
+
+[tool.ruff.format]
+docstring-code-format = true
