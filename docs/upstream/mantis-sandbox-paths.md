@@ -89,20 +89,20 @@ Two lines, both in the reference harness at `d13c93fb`.
 `reference/tools/research_tools.py:156` passes the scan root as the fallback filepath for every
 finding in the report:
 
-```python
+```text
 write_findings(ctx.db_path, ctx.target_file, findings, run_id=ctx.run_id)
 ```
 
 `reference/core/database.py:607` takes that fallback whenever the model's structured finding omits
 `filepath`:
 
-```python
+```text
 raw_fp = finding.get("filepath") or filepath or ""
 ```
 
 `reference/core/database.py:57-58`, in `canonical_filepath`, then converts it:
 
-```python
+```text
 if raw == tf_clean:
     return os.path.basename(raw) if (os.path.isabs(raw) and not os.path.isdir(raw)) else (raw.lstrip("/") if os.path.isabs(raw) else raw)
 ```
