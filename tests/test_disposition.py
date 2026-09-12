@@ -96,6 +96,7 @@ _GATHERING_PATH = {
     "ingest.py",
     "claim.py",
     "fence.py",
+    "identity.py",
 }
 
 
@@ -149,7 +150,20 @@ def test_the_gathering_path_set_matches_the_package():
     accounted = (
         _GATHERING_PATH
         | _MAY_NAME_A_DECIDED_STATUS
-        | {"binding.py", "verdict.py", "hashing.py", "render.py", "_version.py"}
+        | {
+            "binding.py",
+            "verdict.py",
+            "hashing.py",
+            "render.py",
+            "summary.py",
+            "_version.py",
+            # `baseline.py` and `triage.py` carry decided statuses that a person already set, as
+            # strings and as `Status.UNDETERMINED`. Neither constructs a `Disposition`, so neither
+            # belongs on the gathering path, and neither names a decided status, so neither needs
+            # to be on the decision path.
+            "baseline.py",
+            "triage.py",
+        }
     )
     assert modules - accounted == set(), (
         f"new module(s) {sorted(modules - accounted)}: add each to the gathering path, to the "

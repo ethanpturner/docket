@@ -1,13 +1,20 @@
 """docket: the record of what was claimed, what was checked, and who decided.
 
-Five commands. The first two decide nothing; the third is where a person does; the last two make
-that decision checkable afterwards.
+Six commands. `record` and `assess` decide nothing; `decide` is where a person does; `bind` and
+`verify` make that decision checkable afterwards; `triage` is the loop that runs the others over a
+real queue.
 
+    docket triage FINDING --repo PATH --commit SHA [--baseline F] [--no-model] [--summary F]
     docket record FINDING --repo PATH --commit SHA [--out DIR] [--format json|markdown|vex]
     docket assess FINDING --repo PATH --commit SHA [--no-model] [--record F | --replay F]
     docket decide RECORD --claim ID --status S --reason R --decided-by WHO [--justification J]
     docket bind   RECORD --decisions F --finding F --out DIR
     docket verify MANIFEST [--repo PATH]
+
+`triage` merges a queue by content identity rather than by the producer's own label, assesses one
+representative per group, and compares each against a baseline of what was already decided. A
+decision carries forward only while the code it was made against still reads the same; when that
+code changes the claim comes back as `stale`, carrying the previous reason.
 
 `record` answers the question that needs no model: does this claim point at code that exists?
 `assess` adds the five questions OpenVEX allows a dismissal to rest on, answering two of them
@@ -23,16 +30,18 @@ re-derives it -- the artifact digests, and the quoted spans re-read from the rep
 repository those span checks are `unverifiable`, and the coverage line says so rather than leaving
 a reader to infer it from which flags were passed.
 
-`record` and `assess` always exit 0, because a triage tool that blocks a pipeline on its first run
-is uninstalled before anyone reads its output; gating is opt-in through `--fail-on-unresolved`.
-`verify` exits non-zero on `contradicted`, which is a statement that something recorded here is no
-longer true, and zero on `unverifiable` unless asked otherwise: an unknown is not a failure.
+`record`, `assess` and `triage` always exit 0, because a triage tool that blocks a pipeline on its
+first run is uninstalled before anyone reads its output; gating is opt-in and per-condition
+(`--fail-on-unresolved`, `--fail-on-new`, `--fail-on-stale`, `--fail-on-status`). `verify` exits
+non-zero on `contradicted`, which is a statement that something recorded here is no longer true,
+and zero on `unverifiable` unless asked otherwise: an unknown is not a failure.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,6 +49,7 @@ from typing import TYPE_CHECKING, Any
 
 from docket._version import __version__
 from docket.assess import assess_records
+from docket.baseline import Baseline, load_baseline
 from docket.binding import bind as bind_manifest
 from docket.binding import load_manifest, statement
 from docket.binding import verify as verify_binding
@@ -62,6 +72,9 @@ from docket.model import (
 )
 from docket.render import render_evidence_markdown, render_markdown
 from docket.resolve import resolve_locator
+from docket.summary import render_summary, render_terminal
+from docket.triage import DEFAULT_WORKERS
+from docket.triage import triage as triage_queue
 from docket.verdict import Verdict
 from docket.vex import JUSTIFICATIONS, vex_document
 
@@ -313,6 +326,72 @@ def _cmd_bind(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_triage(args: argparse.Namespace) -> int:
+    if not args.repo.is_dir():
+        print(f"docket: {args.repo} is not a directory", file=sys.stderr)
+        return 2
+    try:
+        records = records_for_file(args.finding, repo=args.repo, commit=args.commit)
+    except (IngestError, OSError) as error:
+        print(f"docket: {error}", file=sys.stderr)
+        return 2
+    if not records:
+        print("docket: the file holds no claims", file=sys.stderr)
+        return 0
+
+    baseline = Baseline()
+    if args.baseline is not None and args.baseline.exists():
+        baseline = load_baseline(args.baseline)
+
+    result = triage_queue(
+        records,
+        repo=args.repo,
+        baseline=baseline,
+        model=_model_for(args),
+        workers=args.workers,
+    )
+
+    if args.out is not None:
+        args.out.mkdir(parents=True, exist_ok=True)
+        payload = json.dumps(result.to_dict(), indent=2) + "\n"
+        print(f"wrote {_write(args.out, 'triage.json', payload)}", file=sys.stderr)
+        product = args.product or f"file://{args.repo.resolve()}"
+        document = vex_document(
+            [item.primary.disposition for item in result.items],
+            author=args.author,
+            document_id=f"https://openvex.dev/docs/docket/{result.commit or 'queue'}",
+            product_id=product,
+        )
+        vex_payload = json.dumps(document, indent=2) + "\n"
+        print(f"wrote {_write(args.out, 'openvex.json', vex_payload)}", file=sys.stderr)
+
+    markdown = render_summary(result)
+    if args.summary is not None:
+        args.summary.parent.mkdir(parents=True, exist_ok=True)
+        args.summary.write_text(markdown, encoding="utf-8")
+        print(f"wrote {args.summary}", file=sys.stderr)
+
+    step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if step_summary:
+        with Path(step_summary).open("a", encoding="utf-8") as handle:
+            handle.write(markdown + "\n")
+
+    print(render_summary(result) if args.markdown else render_terminal(result), end="")
+
+    failed = False
+    if args.fail_on_new and result.new:
+        print(f"docket: {len(result.new)} new claim(s)", file=sys.stderr)
+        failed = True
+    if args.fail_on_stale and result.stale:
+        print(f"docket: {len(result.stale)} decision(s) went stale", file=sys.stderr)
+        failed = True
+    if args.fail_on_status and result.with_status(args.fail_on_status):
+        count = len(result.with_status(args.fail_on_status))
+        print(f"docket: {count} claim(s) carry status {args.fail_on_status}", file=sys.stderr)
+        failed = True
+    return 1 if failed else 0
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     manifest = load_manifest(args.manifest)
     base = args.base or args.manifest.parent
@@ -356,6 +435,70 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--version", action="version", version=f"docket {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    triager = subparsers.add_parser(
+        "triage",
+        help="the queue: merge a finding set by content, assess it, compare it to the baseline",
+    )
+    triager.add_argument("finding", type=Path, help="SARIF, a findings JSON, a feed, or text")
+    triager.add_argument("--repo", type=Path, required=True, help="the worktree to check against")
+    triager.add_argument(
+        "--commit", required=True, help="the commit the worktree is at; recorded, never inferred"
+    )
+    triager.add_argument(
+        "--baseline",
+        type=Path,
+        default=None,
+        help=(
+            "decisions carried from earlier runs. A decision carries only while the code it was "
+            "made against reads the same; a missing file is an empty baseline."
+        ),
+    )
+    triager.add_argument(
+        "--out", type=Path, default=None, help="write triage.json and openvex.json here"
+    )
+    triager.add_argument(
+        "--summary", type=Path, default=None, help="write the Markdown summary here"
+    )
+    triager.add_argument(
+        "--markdown", action="store_true", help="print the Markdown summary instead of the digest"
+    )
+    triager.add_argument("--model", default=DEFAULT_MODEL, help="the model to gather with")
+    triager.add_argument("--base-url", default=DEFAULT_BASE_URL, help="an OpenAI-compatible API")
+    triager.add_argument("--record", type=Path, default=None, help="append model calls here")
+    triager.add_argument("--replay", type=Path, default=None, help="serve from this recording")
+    triager.add_argument(
+        "--no-model",
+        action="store_true",
+        help="answer only the two deterministic questions; costs nothing and runs in seconds",
+    )
+    triager.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help="concurrent gathering calls. Ignored without a model, where there is nothing to overlap.",
+    )
+    triager.add_argument("--author", default="docket", help="the VEX document's author")
+    triager.add_argument("--product", default=None, help="the VEX product identifier")
+    triager.add_argument(
+        "--fail-on-new",
+        action="store_true",
+        dest="fail_on_new",
+        help="exit 1 when the queue holds a claim nobody has decided",
+    )
+    triager.add_argument(
+        "--fail-on-stale",
+        action="store_true",
+        dest="fail_on_stale",
+        help="exit 1 when a decision's code changed, so the decision no longer applies",
+    )
+    triager.add_argument(
+        "--fail-on-status",
+        default=None,
+        dest="fail_on_status",
+        choices=tuple(item.value for item in Status),
+        help="exit 1 when a carried decision has this status",
+    )
 
     recorder = subparsers.add_parser(
         "record", help="read a finding, resolve its locators, write the record"
@@ -511,8 +654,13 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    if args.command in ("decide", "bind", "verify"):
-        handlers = {"decide": _cmd_decide, "bind": _cmd_bind, "verify": _cmd_verify}
+    if args.command in ("decide", "bind", "verify", "triage"):
+        handlers = {
+            "decide": _cmd_decide,
+            "bind": _cmd_bind,
+            "verify": _cmd_verify,
+            "triage": _cmd_triage,
+        }
         try:
             return handlers[args.command](args)
         except (DecisionError, ValueError) as error:
