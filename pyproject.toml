@@ -1,6 +1,6 @@
 [project]
 name = "docket"
-version = "0.1.0"
+version = "0.2.0"
 description = "Records the disposition of a security finding: exploitable, not exploitable, or undetermined, with the evidence behind it"
 readme = "README.md"
 license = "MIT"

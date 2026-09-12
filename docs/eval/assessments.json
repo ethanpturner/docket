@@ -1,0 +1,45 @@
+{
+  "claims": 81,
+  "elapsed_seconds": 0.0,
+  "model_calls": 177,
+  "input_tokens": 132678,
+  "output_tokens": 53635,
+  "by_tool": {
+    "Codex Security": {
+      "claims": 9,
+      "questions_established": 32,
+      "model_failures": 7
+    },
+    "Mantis": {
+      "claims": 72,
+      "questions_established": 204,
+      "model_failures": 14,
+      "with_candidate": 26
+    }
+  },
+  "answers": {
+    "component_present": {
+      "contradicts_justification": 59,
+      "supports_justification": 22
+    },
+    "construct_present": {
+      "contradicts_justification": 52,
+      "not_established": 28,
+      "supports_justification": 1
+    },
+    "reachable": {
+      "contradicts_justification": 56,
+      "not_established": 24,
+      "supports_justification": 1
+    },
+    "attacker_controlled": {
+      "not_established": 48,
+      "contradicts_justification": 33
+    },
+    "mitigation_present": {
+      "not_established": 69,
+      "contradicts_justification": 10,
+      "supports_justification": 2
+    }
+  }
+}

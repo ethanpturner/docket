@@ -12,21 +12,17 @@ reads it next. Fencing is what keeps the reviewer's document from being a delive
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, Final
 
+from docket.fence import FENCE, neutralize_fence
+from docket.questions import Answer, question_spec
 from docket.resolve import Resolution
 
 if TYPE_CHECKING:
     from docket.disposition import DispositionRecord
+    from docket.evidence import EvidenceRecord
 
-__all__ = ["FENCE", "neutralize_fence", "render_markdown"]
-
-# A fence long enough that ordinary triple-backtick content in a report cannot close it.
-FENCE: Final = "`````"
-
-_FENCE_LIKE: Final = re.compile(r"`{3,}")
-_NEUTRALIZED: Final = "``​`"
+__all__ = ["FENCE", "neutralize_fence", "render_evidence_markdown", "render_markdown"]
 
 _RESOLUTION_NOTE: Final = {
     Resolution.RESOLVES: "the file is present and the range is in it",
@@ -34,16 +30,6 @@ _RESOLUTION_NOTE: Final = {
     Resolution.LINE_OUT_OF_RANGE: "the file is present; the cited lines are not",
     Resolution.NOT_A_LOCATOR: "not a path with an optional line range",
 }
-
-
-def neutralize_fence(text: str) -> str:
-    """Make `text` unable to close the block it is quoted in.
-
-    A zero-width space between backticks leaves the text readable and visually unchanged while
-    stopping the run from being a delimiter. Deleting the characters would alter what the reporter
-    wrote, and the record's value depends on the quotation being faithful.
-    """
-    return _FENCE_LIKE.sub(_NEUTRALIZED, text)
 
 
 def _summary_line(record: DispositionRecord) -> str:
@@ -137,3 +123,109 @@ def render_markdown(record: DispositionRecord) -> str:
         f"Recorded by docket {record.docket_version} at {record.recorded_at.isoformat()}.",
     ]
     return "\n".join(lines) + "\n"
+
+
+_ANSWER_MARK: Final = {
+    Answer.SUPPORTS_JUSTIFICATION: "supports",
+    Answer.CONTRADICTS_JUSTIFICATION: "contradicts",
+    Answer.NOT_ESTABLISHED: "**not established**",
+}
+
+
+def render_evidence_markdown(record: EvidenceRecord) -> str:
+    """The page a reviewer reads to decide.
+
+    Phase 0's page said what was claimed and which citations held up. This one adds the five
+    questions, and it is organised so the last section is the one that matters most: what nobody
+    established. A page that prints only what was found lets an unexamined question look like a
+    settled one.
+    """
+    base = render_markdown(record.disposition)
+    # The base page ends with its own closing note; the assessment goes before it.
+    marker = "## What this record does not say"
+    head, _, tail = base.partition(marker)
+
+    lines: list[str] = ["## The five questions", ""]
+    lines += [
+        "Each bears on one of the five justifications OpenVEX allows for a dismissal. An answer",
+        "is evidence, not a decision: the status stays `undetermined` and this tool does not",
+        "select a justification.",
+        "",
+        "| Question | Bears on | Answer | Settled by |",
+        "|---|---|---|---|",
+    ]
+    for finding in record.findings:
+        spec = question_spec(finding.question)
+        lines.append(
+            f"| {spec.asks} | `{spec.justification}` | {_ANSWER_MARK[finding.answer]} | "
+            f"`{spec.settled_by}` |"
+        )
+    lines.append("")
+
+    for finding in record.findings:
+        spec = question_spec(finding.question)
+        lines += [f"### {spec.asks}", ""]
+        lines.append(
+            f"**{_ANSWER_MARK[finding.answer]}**"
+            + (f" - {finding.detail}" if finding.detail else "")
+        )
+        lines.append("")
+        for item in finding.evidence:
+            lines.append(f"- *{item.source}*: {item.summary}")
+        if finding.model_failed:
+            lines.append(f"- no answer: {finding.model_failed}")
+        if finding.could_not_establish:
+            lines += ["", "Could not establish:"]
+            lines += [f"- {gap}" for gap in finding.could_not_establish]
+        lines.append("")
+
+    if record.candidates:
+        lines += [
+            "## Candidate justifications",
+            "",
+            "Labels a reviewer **could** select, with the evidence and the reason each might be",
+            "wrong. None of these is selected, and this tool does not select one.",
+            "",
+        ]
+        for candidate in record.candidates:
+            warn = (
+                " (the OpenVEX spec warns this is hard to prove conclusively)"
+                if candidate.hard_to_prove
+                else ""
+            )
+            lines += [
+                f"### `{candidate.justification}`{warn}",
+                "",
+                f"{candidate.evidence_summary}",
+                "",
+                f"*Caveat:* {candidate.caveat}",
+                "",
+            ]
+    else:
+        lines += [
+            "## Candidate justifications",
+            "",
+            "None. No question produced evidence supporting a dismissal, which is not evidence",
+            "that the claim is true.",
+            "",
+        ]
+
+    lines += ["## What nobody established", ""]
+    if record.unestablished:
+        for finding in record.unestablished:
+            spec = question_spec(finding.question)
+            why = finding.model_failed or finding.detail or "no evidence was gathered"
+            lines.append(f"- **{spec.asks}** {why}")
+    else:
+        lines.append("Every question was answered. The status is still a person's to set.")
+    lines.append("")
+
+    if record.model_name:
+        lines += [
+            f"Evidence gathered with `{record.model_name}`, {record.model_calls} call(s), "
+            f"{record.input_tokens} in / {record.output_tokens} out, "
+            f"{record.duration_seconds:.1f}s. The model gathered; it did not decide.",
+            "",
+        ]
+
+    return head + "\n".join(lines) + marker + tail
