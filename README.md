@@ -9,8 +9,73 @@ is the one an auditor asks about, the one a maintainer spends their week on, and
 currently gets written down as a pass.
 
 ```
-docket record findings.sarif --repo ./app --commit 9f2c1ab --format vex
+uvx --from git+https://github.com/ethanpturner/docket docket triage findings.sarif \
+    --repo . --commit "$(git rev-parse HEAD)" --no-model
 ```
+
+No configuration, no account, no API key, and no network beyond fetching the tool. On a queue of
+forty claims that run takes **0.08 seconds**, because the two questions it answers are a path
+lookup and a call graph. Everything below is what the other four commands add.
+
+## The queue
+
+`docket triage` is the loop. It reads a finding set, merges it by content, assesses one claim per
+group, and compares each against the decisions already made.
+
+```
+docket triage findings.sarif --repo ./app --commit 9f2c1ab \
+    --baseline .docket/baseline.json --out .docket/out
+```
+
+```
+40 claims -> 21 after merging (18 merges)
+  new     3
+  stale   1
+  carried 17
+```
+
+**It exits 0 whatever it finds.** A security tool that arrives blocking a pipeline is uninstalled
+before anybody reads its first finding. Gating is opt-in and each flag names a condition a team
+agreed to care about: `--fail-on-new`, `--fail-on-stale`, `--fail-on-status`. (`DEC-015`.)
+
+### Merging, and what it refuses to merge
+
+A claim's identity is derived from its content: the innermost cited symbol, and the normalised CWE.
+Not the producer's own signature, which identifies the prose rather than the weakness — across ten
+runs of one reviewer, 72 emitted claims carried 41 distinct signatures and **not one repeated
+across runs**. Not the line number either, which is a position in a revision.
+
+Every merge is reported with its basis and the titles it folded together, because a merge is a
+claim this tool makes and a reviewer needs to be able to reject it.
+
+**Two CWE identifiers at one site are not merged.** The same reviewer called one missing signature
+check `CWE-306` in two runs and `CWE-345` in two others. Merging those would mean asserting an
+equivalence between two entries in somebody else's taxonomy, which this tool has no basis to make
+and no way to check, so they are reported adjacent and the call is a person's. (`DEC-013`.)
+
+### The baseline expires
+
+A decided claim carries forward so it does not come back. Every other suppression file in this
+category stops there, and the dismissal then outlives the code it was reasoning about: somebody
+rewrites the function, and the finding that would now be real is filtered out by a decision made
+about different code.
+
+A decision here is anchored to the bytes it cites **and** to the enclosing function's own digest.
+
+| State | Meaning |
+|---|---|
+| `carried` | every span the decision rests on still reads the same |
+| `stale` | a span changed or stopped resolving, so the decision is **not** applied |
+| `new` | no decision exists for this identity |
+
+A span whose bytes moved while its function is byte-identical has moved, not changed, and the
+decision carries with a note — otherwise one formatting pass re-opens every dismissal in the file
+and the mechanism gets switched off inside a week. An entry that anchored no positions is stale
+rather than carried, because carrying it would be a check that cannot fail. (`DEC-014`.)
+
+A stale claim returns carrying the previous status, the previous reason, and a sentence naming what
+changed. The reviewer is usually about to reach the same conclusion, and making them reconstruct
+their own argument from nothing is how this feature would get turned off.
 
 ## Checking the citation
 
@@ -162,6 +227,74 @@ were backwards, which is the same failure one step earlier. `DEC-008` records it
 carries an affirmative `proposition` that is the only thing a model is shown, and the pre-fix figure
 is kept here as the finding that produced the entry rather than as a result.
 
+## Measured: does merging by content beat the tool's own label?
+
+The same sixteen runs, pooled per reviewer per application, so that a signature stable inside one
+run and unstable across runs is measured on the case that exposes it. Reproduce with
+`scripts/measure_dedupe.py RUNS_DIR WORKTREE COMMIT`; no model calls, no network.
+
+| Tool | Runs | Emitted claims | Distinct by its own signature | Distinct by content | Groups spanning >1 run |
+|---|--:|--:|--:|--:|--:|
+| Mantis @ `d13c93f` | 10 | 72 | 41 | **35** | 5 |
+| Codex Security 0.1.26 | 3 | 9 | 9 | **7** | 2 |
+
+Restricted to claims that cite a position which resolves — excluding the 22 Mantis claims caught by
+its scan-root path defect, which have no site and fall back to their titles:
+
+| Tool | Emitted | By signature | By content |
+|---|--:|--:|--:|
+| Mantis | 50 | 30 | **24** |
+| Codex Security | 9 | 9 | **7** |
+
+**The second column is the result, not the third.** Content identity does shorten the queue, by
+about 15%. What it does not do is make ten runs collapse into one queue, and the reason is not a
+weakness in the merge rule: **only 5 of the 35 groups appear in more than one of the five runs.**
+Thirty of them were reported once and never again.
+
+Deduplication cannot fix non-determinism. The pairwise signature agreement of 0.00 measured earlier
+was not an artefact of unstable labelling that better identity would wash out — after normalising
+away the prose, the line numbers and the tool's own identifiers, the underlying findings still
+mostly differ from run to run. A queue fed by a re-run of this reviewer is mostly new claims, and
+that is a fact about the reviewer.
+
+One thing the merge did surface. At a single function, `deploy_notifier/main.py::receive_event`,
+the same reviewer attached **five different CWE identifiers across five runs** — 306, 345, 400, 664
+and 703. Those are reported together and merged into nothing, because equating them is a taxonomy
+judgement this tool declines to make.
+
+## The loop, end to end
+
+Three runs over one small service, committed under
+[`docs/eval/loop-example/`](docs/eval/loop-example/) and re-derived by two tests on every CI run.
+
+| Run | What happened | Queue |
+|---|---|---|
+| 1 | The scanner reports two claims. Nobody has decided them. | 2 new |
+| 2 | A reviewer decided both; nothing in the code moved. | 2 carried, **nothing needs a person** |
+| 3 | Somebody fixed the path traversal. The scanner ran again. | **1 stale, 1 carried** |
+
+The third run is the point. The path-traversal decision comes back, because the function it was
+about was rewritten, carrying the reviewer's own earlier reason. The dead-code decision carries,
+because `audit` only moved down the file.
+
+And the third run's claims arrive under **different scanner signatures** from the first run's —
+`scanner-b7` where run one had `scanner-a1`, citing different line numbers. A baseline keyed on the
+producer's identifier would have matched neither and called both claims new.
+
+## In CI
+
+```yaml
+- uses: ethanpturner/docket@main
+  with:
+    finding: semgrep.sarif
+    baseline: .docket/baseline.json
+```
+
+Defaults: `--no-model`, and every gate off. It writes a Markdown summary to the job summary, the
+OpenVEX document to `.docket/out/`, and exits 0. A full workflow is in
+[`.github/workflows/example-triage.yml.txt`](.github/workflows/example-triage.yml.txt); there is a
+`Dockerfile` for anyone who would rather pin an image.
+
 ## Deciding, and binding the decision to what it was made from
 
 `record` and `assess` refuse to reach a status. `decide` is what they refuse in favour of.
@@ -244,10 +377,16 @@ byte-identical; the code had moved.
 
 ## Status
 
-Phase 2. `record` checks a claim's citations, `assess` gathers evidence for the five questions and
-decides nothing, `decide` is where a person does, and `bind` and `verify` make that decision
-checkable afterwards without a key.
+Phase 3. `triage` is the loop: merge a queue by content, compare it against what was already
+decided, and say what needs a person. `record` checks a claim's citations, `assess` gathers
+evidence for the five questions and decides nothing, `decide` is where a person does, and `bind`
+and `verify` make that decision checkable afterwards without a key.
 
-Install from a clone: `uv sync`, then `uv run docket --help`.
+```
+uv tool install git+https://github.com/ethanpturner/docket   # or: pipx install git+...
+uvx --from git+https://github.com/ethanpturner/docket docket --help
+```
+
+From a clone: `uv sync`, then `uv run docket --help`. No runtime dependencies, on any path.
 
 MIT.

@@ -1,0 +1,57 @@
+{
+  "format": "docket/baseline/v1",
+  "note": "Each entry is a decision and the bytes it was made against. A decision is carried only while those bytes still read the same; when they change the claim returns to the queue as `stale` and this file does not suppress it. Deleting an entry re-opens its claim.",
+  "updated_at": "2026-09-12T02:53:09.069491+00:00",
+  "entries": [
+    {
+      "identity": {
+        "key": "sha256:413daee5dcd84b80a0693e64dd58f4cb78b41cda953d9cb2668f99e5bf05e086",
+        "kind": "site+weakness",
+        "basis": "site service.py::audit and weakness CWE-778"
+      },
+      "title": "Audit helper is never called",
+      "status": "not_exploitable",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": null,
+      "reason": "`audit` has no caller in this service and is not exported; it is dead code scheduled for deletion, not a missing control.",
+      "decided_by": "reviewer@example.com",
+      "decided_at": "2026-09-11T00:00:00+00:00",
+      "override_reason": null,
+      "commit": "run-1-new",
+      "anchors": [
+        {
+          "locator": "service.py:18",
+          "path": "service.py",
+          "sha256": "sha256:3342248df36581745bd85d0b5e96a8680a70eaf9d2796366adf8078e240f30ab",
+          "symbol": "audit",
+          "symbol_sha256": "sha256:3fd733e33f7961a5ee97be7d643c2457426076f1f7c78f907d7287b33a27730f"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "key": "sha256:61c5c4e152ce62a9c9b7bfd6db4626c97343021bd307b6bc2fc289b14b457ce9",
+        "kind": "site+weakness",
+        "basis": "site service.py::_load and weakness CWE-22"
+      },
+      "title": "Report name is joined to a path without containment",
+      "status": "exploitable",
+      "justification": null,
+      "impact_statement": null,
+      "reason": "`name` reaches a path join with no containment check, and `render` is called from the HTTP layer with a caller-supplied value.",
+      "decided_by": "reviewer@example.com",
+      "decided_at": "2026-09-11T00:00:00+00:00",
+      "override_reason": null,
+      "commit": "run-1-new",
+      "anchors": [
+        {
+          "locator": "service.py:7",
+          "path": "service.py",
+          "sha256": "sha256:3d4793e82eca009e1af16fc52ae0662c7c05f1961ef77db5302a36b2c287f7ab",
+          "symbol": "_load",
+          "symbol_sha256": "sha256:ded85f324b97a364b3b348a375b1991fb13e9a2060db41feee7e597ec4cb5098"
+        }
+      ]
+    }
+  ]
+}

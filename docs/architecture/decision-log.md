@@ -584,3 +584,182 @@ it to be.
 Whether a later phase that takes two commits -- the one the claim was made against and the one it
 was fixed in -- should emit `fixed` over both. That version would have looked at both, which is
 the condition this entry actually rests on.
+
+---
+
+## DEC-013 — A claim's identity is derived from its content, never from the producer's own label
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+Two claims are the same claim when they name the same innermost cited symbol and the same
+normalised CWE. The identity is a digest over those two things and nothing else: not the tool's
+signature, not the line number, not the title. Where no cited position resolves, identity falls
+back to the title's token set and says that it did; where nothing at all is derivable the claim
+keeps its own identifier and merges with nothing.
+
+Two claims at one site whose CWE identifiers differ are **not** merged. They are reported adjacent
+as related, and a person decides whether they are one thing.
+
+### Why
+
+The obvious key is the producer's own fingerprint, and it does not work. Over ten runs of one
+agentic reviewer against two applications, 72 emitted claims carried 41 distinct signatures and
+pairwise agreement across runs was 0.00 — the identifier changes when the prose changes, so it is
+an identifier of the prose. Grouping on it produces a queue that grows linearly with how often the
+scanner runs.
+
+A line number fails for a different reason: it is a position in a revision, and the baseline that
+depends on identity has to survive a revision or it is worthless.
+
+The anchor is one site rather than the set of sites because the measured data forced it. Two runs
+describing one weakness cited `{main.py, main.py::receive_event}` and `{main.py::receive_event}`,
+and a set-equality key split a claim from itself.
+
+Declining to merge across CWE identifiers is the same refusal in the other direction. The same
+reviewer called one missing signature check `CWE-306` in two runs and `CWE-345` in two others, and
+merging those would mean this tool asserting an equivalence between two entries in somebody else's
+taxonomy — a judgement it has no basis for and no way to check. Reporting them at one site gives a
+reviewer the merge without the tool making it.
+
+### Alternatives considered
+
+- **The tool's signature, with content as a tiebreak.** Rejected: the signature contributes no
+  grouping at all across runs, so it only adds a way for the key to be wrong.
+- **Title similarity above a threshold.** Rejected. A threshold is a knob nobody can set from
+  evidence, and a fuzzy key makes a merge unreproducible between two runs of docket itself.
+- **A CWE family map, so 306 and 345 merge.** Rejected for now. It is a static table asserting
+  equivalences this project cannot verify, and getting it wrong hides a finding inside a merge.
+  The related-groups report is the cheaper half of the same benefit.
+
+### Tradeoffs
+
+Merging is coarser than a human's judgement in both directions. Two genuinely different weaknesses
+in one function with one CWE will merge, and the titles carried on every merge are what a reviewer
+uses to catch it. Measured on the corpus, content identity took 72 emitted claims to 35 groups
+where the tool's own signature took them to 41; only 5 of those 35 groups spanned more than one
+run, which is a fact about the reviewer rather than about this rule.
+
+### Open questions
+
+Whether a symbol rename should preserve identity, which needs something more than a name. Whether
+an anchor should exist for languages the call graph does not parse, where a claim currently keys on
+the file.
+
+---
+
+## DEC-014 — A decision carries until the code it was made about changes, and then it does not
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+A decided claim goes into a baseline file with the digests of the spans it cites and the digest of
+each enclosing function's whole body. On a later run the claim is `carried` while those read the
+same, `stale` when any of them changed or stopped resolving, and `new` when the baseline has no
+entry. A stale decision is not applied, and the claim returns to the queue with the previous
+status, the previous reason and a sentence naming what changed.
+
+A span whose bytes differ while its enclosing function is byte-identical has `moved`, not changed,
+and the decision carries with a note. An entry that anchored no resolved positions is `stale`, not
+carried.
+
+### Why
+
+Every suppression mechanism in this category suppresses forever. The fingerprint goes in the file
+and the finding never comes back, including after the function it was about is rewritten. The
+dismissal outlives its argument silently, and the file meant to reduce noise becomes where a real
+weakness goes to be ignored.
+
+The material for a better rule already existed: DEC-011 binds a decision to the bytes at the
+positions it cites, so "is this decision still about the code it was made about" is a digest
+comparison rather than a judgement. Suppressing until the evidence moves is the honest version of
+suppression, and it is the one thing here no other tool in the category does.
+
+The moved-versus-changed distinction is not a nicety. Without it, one formatting pass re-opens
+every dismissal in a file, the noise returns all at once, and the mechanism is switched off inside
+a week — which would take the whole feature with it.
+
+An entry with no anchors is stale because carrying it would be a check that cannot fail. That
+defect has now been found three times in this project's own work and twice in other people's, and
+it is the specific thing these decision entries exist to catch.
+
+### Alternatives considered
+
+- **Suppress forever, like everything else.** Rejected. It is the failure mode, not the baseline.
+- **Expire after N days.** Rejected: time is a proxy for the thing that actually matters, and it
+  re-opens decisions about untouched code while carrying decisions about rewritten code.
+- **Expire on any change to the file.** Rejected as too coarse; an unrelated edit at the bottom of
+  a module would invalidate every decision in it.
+- **Track the symbol only, ignoring the cited span.** Rejected as too coarse in the other
+  direction: a claim about one line inside a large function would survive that line being deleted.
+
+### Tradeoffs
+
+Staleness is conservative wherever the enclosing symbol is unknown — a locator naming a whole file,
+or a language the call graph does not parse — so a move reads as a change and a person is asked
+again. That is the direction this tool errs in everywhere else, and it means a repository in an
+unparsed language gets less from the baseline than a Python one does.
+
+Writing the tests found the first version of the rule too weak: a span digest can match while the
+function around it is rewritten, so both digests are checked, and the symbol is looked up by name
+rather than by position because position is the thing that moved.
+
+### Open questions
+
+Whether a stale decision should be offered back to the reviewer as a pre-filled decision rather
+than only as history. What happens to a baseline entry whose symbol is renamed, which currently
+reads as stale.
+
+---
+
+## DEC-015 — The queue exits zero, and every gate is opt-in and named
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+`docket triage` exits 0 whatever it finds. Failing the build is opt-in through three flags that
+each name a condition: `--fail-on-new`, `--fail-on-stale`, and `--fail-on-status`. The GitHub
+action defaults all three off and defaults `--no-model` on.
+
+### Why
+
+A security tool that arrives blocking a pipeline is uninstalled before anybody reads its first
+finding. The most widely adopted scanner in this category exits 0 by default even when it finds
+something, and that is not an accident of its design; it is why it is installed.
+
+The gates are separate rather than a severity threshold because they are different decisions a
+team makes at different times. "The queue must stay empty" is a policy about review capacity.
+"A dismissal going stale must interrupt somebody" is a policy about risk. A single `--strict` would
+collapse them and force a team to accept both to get either.
+
+`--no-model` is the action's default because a CI job that requires a provider key is a job most
+repositories will not run. The two deterministic questions cost nothing, need no network, and
+complete in well under a second on a queue of forty claims, so the free path is the one that gets
+installed.
+
+### Alternatives considered
+
+- **Fail on any new claim by default.** Rejected. It is the same mistake as gating by default,
+  dressed as a sensible convention.
+- **A severity threshold.** Rejected: severity here is the producer's own word in the producer's
+  own vocabulary, and this tool does not normalise it (see `Claim.severity`).
+- **Model-backed gathering on by default in CI.** Rejected on cost and on credentials.
+
+### Tradeoffs
+
+A team that installs the action and changes nothing gets a report and never a failure, which means
+docket can be installed and ignored. That is the intended failure mode: being ignorable is the
+price of being installed at all, and the summary is written to the job summary and the pull request
+either way.
+
+### Open questions
+
+Whether `--fail-on-stale` should be the one gate that defaults on, since a stale decision is the
+only condition here that represents something a person already looked at and that has since
+changed.

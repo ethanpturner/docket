@@ -390,3 +390,48 @@ def test_triage_writes_a_queue_and_a_vex_document(tmp_path: Path, repo: Path) ->
     document = json.loads((out / "openvex.json").read_text(encoding="utf-8"))
     assert document["statements"][0]["status"] == "under_investigation"
     assert "docket" in (tmp_path / "summary.md").read_text(encoding="utf-8")
+
+
+# --- the committed worked example ----------------------------------------------------------
+
+LOOP = Path(__file__).resolve().parents[1] / "docs" / "eval" / "loop-example"
+
+
+def test_the_loop_example_is_what_the_readme_says() -> None:
+    """Re-derive the committed three-run example: new, carried, then one stale and one carried.
+
+    The third run's claims arrive under different scanner signatures from the first run's
+    (`scanner-b7` against `scanner-a1`), so a baseline keyed on the producer's own identifier
+    would have matched nothing and called both claims new. This test is the pin on that.
+    """
+    runs = {
+        "run-1-new": (2, 0, 0),
+        "run-2-carried": (0, 0, 2),
+        "run-3-stale": (0, 1, 1),
+    }
+    for name, (new, stale, carried) in runs.items():
+        summary = json.loads((LOOP / name / "triage.json").read_text(encoding="utf-8"))["summary"]
+        assert (summary["new"], summary["stale"], summary["carried"]) == (new, stale, carried), name
+
+    third = json.loads((LOOP / "run-3-stale" / "triage.json").read_text(encoding="utf-8"))
+    states = {item["title"]: item["baseline"] for item in third["items"]}
+
+    changed = states["Report path is built from caller input"]
+    assert changed["state"] == "stale"
+    assert "not what the decision quotes" in changed["detail"]
+    # The previous decision travels with it, so the reviewer re-decides from their own argument.
+    assert changed["previous"]["status"] == "exploitable"
+    assert "no containment check" in changed["previous"]["reason"]
+
+    moved = states["Audit helper has no caller"]
+    assert moved["state"] == "carried"
+    assert "moved" in moved["detail"]
+    assert [span["state"] for span in moved["spans"]] == ["moved"]
+
+
+def test_the_loop_example_claims_arrive_under_new_signatures() -> None:
+    """Identity is content-derived, so a re-run's fresh identifiers still match the baseline."""
+    first = (LOOP / "finding.jsonl").read_text(encoding="utf-8")
+    third = (LOOP / "finding-after-the-fix.jsonl").read_text(encoding="utf-8")
+    assert "scanner-a1" in first and "scanner-a1" not in third
+    assert "scanner-b7" in third

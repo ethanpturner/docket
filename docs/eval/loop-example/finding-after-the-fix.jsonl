@@ -1,0 +1,2 @@
+{"signature": "scanner-b7", "title": "Report path is built from caller input", "cwe": "CWE-22", "severity": "HIGH", "code_paths": ["service.py:8"]}
+{"signature": "scanner-b9", "title": "Audit helper has no caller", "cwe": "CWE-778", "severity": "LOW", "code_paths": ["service.py:22"]}

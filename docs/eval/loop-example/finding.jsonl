@@ -1,0 +1,2 @@
+{"signature": "scanner-a1", "title": "Report name is joined to a path without containment", "cwe": "CWE-22", "severity": "HIGH", "code_paths": ["service.py:7"]}
+{"signature": "scanner-a2", "title": "Audit helper is never called", "cwe": "CWE-778", "severity": "LOW", "code_paths": ["service.py:18"]}

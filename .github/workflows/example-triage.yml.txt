@@ -1,0 +1,40 @@
+# A workflow snippet, kept as .txt so this repository does not run it on itself.
+# Copy to .github/workflows/triage.yml in the repository you want triaged.
+name: triage
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docket:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Whatever produces your findings. Any SARIF will do.
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          generateSarif: "1"
+
+      - uses: ethanpturner/docket@main
+        id: triage
+        with:
+          finding: semgrep.sarif
+          # Decisions carried between runs. Commit this file; a decision expires on its own
+          # when the code it was made against changes.
+          baseline: .docket/baseline.json
+          # Start here. Turn one on once the team agrees the queue should stay at zero.
+          fail-on-new: "false"
+          fail-on-stale: "false"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docket
+          path: |
+            .docket/out/openvex.json
+            .docket/out/summary.md

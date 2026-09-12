@@ -1,0 +1,405 @@
+{
+  "target": {
+    "repository": "docs/eval/loop-example/target",
+    "commit": "run-2-carried"
+  },
+  "summary": {
+    "claims_in": 2,
+    "items": 2,
+    "merges": 0,
+    "related_sites": 0,
+    "new": 0,
+    "carried": 2,
+    "stale": 0,
+    "model_calls": 0,
+    "duration_seconds": 0.0
+  },
+  "merges": [],
+  "related": [],
+  "items": [
+    {
+      "identity": {
+        "key": "sha256:61c5c4e152ce62a9c9b7bfd6db4626c97343021bd307b6bc2fc289b14b457ce9",
+        "kind": "site+weakness",
+        "anchor": "service.py::_load",
+        "sites": [
+          "service.py::_load"
+        ],
+        "weakness": "CWE-22",
+        "topic": [
+          "containment",
+          "joined",
+          "name",
+          "path",
+          "report"
+        ],
+        "basis": "site service.py::_load and weakness CWE-22"
+      },
+      "title": "Report name is joined to a path without containment",
+      "status": "exploitable",
+      "baseline": {
+        "state": "carried",
+        "detail": "",
+        "spans": [
+          {
+            "locator": "service.py:7",
+            "state": "unchanged"
+          }
+        ],
+        "previous": {
+          "status": "exploitable",
+          "justification": null,
+          "reason": "`name` reaches a path join with no containment check, and `render` is called from the HTTP layer with a caller-supplied value.",
+          "decided_by": "reviewer@example.com",
+          "decided_at": "2026-09-11T00:00:00+00:00",
+          "commit": "run-1-new"
+        }
+      },
+      "merged_claim_ids": [
+        "scanner-a1"
+      ],
+      "merged_count": 1,
+      "record": {
+        "docket_version": "0.3.0",
+        "recorded_at": "2026-09-12T02:53:09.069697+00:00",
+        "claim": {
+          "claim_id": "scanner-a1",
+          "title": "Report name is joined to a path without containment",
+          "weakness": "CWE-22",
+          "severity_claimed": "HIGH",
+          "source": {
+            "tool": "Mantis",
+            "version": null,
+            "format": "mantis"
+          },
+          "raw_text": "{\n  \"code_paths\": [\n    \"service.py:7\"\n  ],\n  \"cwe\": \"CWE-22\",\n  \"severity\": \"HIGH\",\n  \"signature\": \"scanner-a1\",\n  \"title\": \"Report name is joined to a path without containment\"\n}",
+          "locators_claimed": [
+            "service.py:7"
+          ]
+        },
+        "target": {
+          "repository": "docs/eval/loop-example/target",
+          "commit": "run-2-carried"
+        },
+        "locators": [
+          {
+            "locator": "service.py:7",
+            "resolution": "resolves",
+            "path": "service.py",
+            "start_line": 7,
+            "end_line": 7,
+            "line_count": 18,
+            "quoted_text": "    \"\"\"Read a report by name. The name is not checked against the root.\"\"\"",
+            "content_hash": "sha256:3d4793e82eca009e1af16fc52ae0662c7c05f1961ef77db5302a36b2c287f7ab",
+            "truncated": false
+          }
+        ],
+        "locator_summary": {
+          "total": 1,
+          "resolved": 1,
+          "by_resolution": {
+            "resolves": 1,
+            "path_absent": 0,
+            "line_out_of_range": 0,
+            "not_a_locator": 0
+          }
+        },
+        "disposition": {
+          "status": "undetermined",
+          "reason": "no assessment performed",
+          "decided_by": null,
+          "decided_at": null,
+          "justification": null,
+          "impact_statement": null,
+          "overrides_evidence": false,
+          "override_reason": null
+        },
+        "assessment": {
+          "assessed_at": "2026-09-12T02:53:09.069892+00:00",
+          "model": null,
+          "model_calls": 0,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "duration_seconds": 0.0,
+          "questions": [
+            {
+              "question": "component_present",
+              "asks": "Is the cited file present in this repository at this commit?",
+              "bears_on_justification": "component_not_present",
+              "settled_by": "resolver",
+              "answer": "contradicts_justification",
+              "detail": "the cited component is present, so this justification does not apply",
+              "evidence": [
+                {
+                  "source": "resolver",
+                  "summary": "1 of 1 cited positions resolve at run-2-carrie",
+                  "locator": null,
+                  "quoted_text": null,
+                  "content_hash": null
+                }
+              ],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "construct_present",
+              "asks": "Does the cited span contain the construct the claim describes?",
+              "bears_on_justification": "vulnerable_code_not_present",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "reachable",
+              "asks": "Is the cited code reachable from an entry point?",
+              "bears_on_justification": "vulnerable_code_not_in_execute_path",
+              "settled_by": "call_graph",
+              "answer": "contradicts_justification",
+              "detail": "a caller or entry point was found for a cited position, so this justification does not apply",
+              "evidence": [
+                {
+                  "source": "call_graph",
+                  "summary": "`_load` at `service.py:7` is called from `service.py::render`",
+                  "locator": "`service.py:7`",
+                  "quoted_text": null,
+                  "content_hash": null
+                }
+              ],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "attacker_controlled",
+              "asks": "Can input an attacker controls reach the cited code?",
+              "bears_on_justification": "vulnerable_code_cannot_be_controlled_by_adversary",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "mitigation_present",
+              "asks": "Is there a control on the path that the claim did not account for?",
+              "bears_on_justification": "inline_mitigations_already_exist",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            }
+          ],
+          "candidate_justifications": [],
+          "not_established": [
+            "construct_present",
+            "attacker_controlled",
+            "mitigation_present"
+          ],
+          "note": "Candidate justifications are not decisions. The status remains undetermined until a person sets it, and this tool does not select a justification."
+        }
+      }
+    },
+    {
+      "identity": {
+        "key": "sha256:413daee5dcd84b80a0693e64dd58f4cb78b41cda953d9cb2668f99e5bf05e086",
+        "kind": "site+weakness",
+        "anchor": "service.py::audit",
+        "sites": [
+          "service.py::audit"
+        ],
+        "weakness": "CWE-778",
+        "topic": [
+          "audit",
+          "called",
+          "helper",
+          "never"
+        ],
+        "basis": "site service.py::audit and weakness CWE-778"
+      },
+      "title": "Audit helper is never called",
+      "status": "not_exploitable",
+      "baseline": {
+        "state": "carried",
+        "detail": "",
+        "spans": [
+          {
+            "locator": "service.py:18",
+            "state": "unchanged"
+          }
+        ],
+        "previous": {
+          "status": "not_exploitable",
+          "justification": "vulnerable_code_not_in_execute_path",
+          "reason": "`audit` has no caller in this service and is not exported; it is dead code scheduled for deletion, not a missing control.",
+          "decided_by": "reviewer@example.com",
+          "decided_at": "2026-09-11T00:00:00+00:00",
+          "commit": "run-1-new"
+        }
+      },
+      "merged_claim_ids": [
+        "scanner-a2"
+      ],
+      "merged_count": 1,
+      "record": {
+        "docket_version": "0.3.0",
+        "recorded_at": "2026-09-12T02:53:09.069742+00:00",
+        "claim": {
+          "claim_id": "scanner-a2",
+          "title": "Audit helper is never called",
+          "weakness": "CWE-778",
+          "severity_claimed": "LOW",
+          "source": {
+            "tool": "Mantis",
+            "version": null,
+            "format": "mantis"
+          },
+          "raw_text": "{\n  \"code_paths\": [\n    \"service.py:18\"\n  ],\n  \"cwe\": \"CWE-778\",\n  \"severity\": \"LOW\",\n  \"signature\": \"scanner-a2\",\n  \"title\": \"Audit helper is never called\"\n}",
+          "locators_claimed": [
+            "service.py:18"
+          ]
+        },
+        "target": {
+          "repository": "docs/eval/loop-example/target",
+          "commit": "run-2-carried"
+        },
+        "locators": [
+          {
+            "locator": "service.py:18",
+            "resolution": "resolves",
+            "path": "service.py",
+            "start_line": 18,
+            "end_line": 18,
+            "line_count": 18,
+            "quoted_text": "    Path(\"audit.log\").write_text(action, encoding=\"utf-8\")",
+            "content_hash": "sha256:3342248df36581745bd85d0b5e96a8680a70eaf9d2796366adf8078e240f30ab",
+            "truncated": false
+          }
+        ],
+        "locator_summary": {
+          "total": 1,
+          "resolved": 1,
+          "by_resolution": {
+            "resolves": 1,
+            "path_absent": 0,
+            "line_out_of_range": 0,
+            "not_a_locator": 0
+          }
+        },
+        "disposition": {
+          "status": "undetermined",
+          "reason": "no assessment performed",
+          "decided_by": null,
+          "decided_at": null,
+          "justification": null,
+          "impact_statement": null,
+          "overrides_evidence": false,
+          "override_reason": null
+        },
+        "assessment": {
+          "assessed_at": "2026-09-12T02:53:09.069903+00:00",
+          "model": null,
+          "model_calls": 0,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "duration_seconds": 0.0,
+          "questions": [
+            {
+              "question": "component_present",
+              "asks": "Is the cited file present in this repository at this commit?",
+              "bears_on_justification": "component_not_present",
+              "settled_by": "resolver",
+              "answer": "contradicts_justification",
+              "detail": "the cited component is present, so this justification does not apply",
+              "evidence": [
+                {
+                  "source": "resolver",
+                  "summary": "1 of 1 cited positions resolve at run-2-carrie",
+                  "locator": null,
+                  "quoted_text": null,
+                  "content_hash": null
+                }
+              ],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "construct_present",
+              "asks": "Does the cited span contain the construct the claim describes?",
+              "bears_on_justification": "vulnerable_code_not_present",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "reachable",
+              "asks": "Is the cited code reachable from an entry point?",
+              "bears_on_justification": "vulnerable_code_not_in_execute_path",
+              "settled_by": "call_graph",
+              "answer": "supports_justification",
+              "detail": "No caller was found by static analysis. That is not proof of unreachability: dynamic dispatch, framework registration, reflection, and entry points outside this repository all defeat a call graph.",
+              "evidence": [
+                {
+                  "source": "call_graph",
+                  "summary": "no static caller of `audit` (cited at `service.py:18`) was found; the graph holds 3 functions",
+                  "locator": null,
+                  "quoted_text": null,
+                  "content_hash": null
+                }
+              ],
+              "could_not_establish": [
+                "whether the function is registered dynamically, by a framework, by reflection, or from outside this repository"
+              ],
+              "model_failed": null
+            },
+            {
+              "question": "attacker_controlled",
+              "asks": "Can input an attacker controls reach the cited code?",
+              "bears_on_justification": "vulnerable_code_cannot_be_controlled_by_adversary",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            },
+            {
+              "question": "mitigation_present",
+              "asks": "Is there a control on the path that the claim did not account for?",
+              "bears_on_justification": "inline_mitigations_already_exist",
+              "settled_by": "model",
+              "answer": "not_established",
+              "detail": "no model was configured",
+              "evidence": [],
+              "could_not_establish": [],
+              "model_failed": null
+            }
+          ],
+          "candidate_justifications": [
+            {
+              "justification": "vulnerable_code_not_in_execute_path",
+              "from_question": "reachable",
+              "evidence_summary": "no static caller of `audit` (cited at `service.py:18`) was found; the graph holds 3 functions",
+              "caveat": "No caller was found by static analysis. That is not proof of unreachability: dynamic dispatch, framework registration, reflection, and entry points outside this repository all defeat a call graph.",
+              "hard_to_prove": false,
+              "is_decision": false
+            }
+          ],
+          "not_established": [
+            "construct_present",
+            "attacker_controlled",
+            "mitigation_present"
+          ],
+          "note": "Candidate justifications are not decisions. The status remains undetermined until a person sets it, and this tool does not select a justification."
+        }
+      }
+    }
+  ]
+}

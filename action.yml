@@ -1,0 +1,103 @@
+name: docket
+description: >-
+  Triage a security finding set against a repository: merge by content, compare against decisions
+  already made, and say what needs a person. Decides nothing itself.
+author: Ethan Turner
+
+branding:
+  icon: clipboard
+  color: gray-dark
+
+inputs:
+  finding:
+    description: The finding file to triage. SARIF, a findings JSON, a JSONL feed, or text.
+    required: true
+  repo:
+    description: The worktree the claims are about.
+    required: false
+    default: .
+  commit:
+    description: The commit the worktree is at. Recorded, never inferred.
+    required: false
+    default: ${{ github.sha }}
+  baseline:
+    description: >-
+      Decisions carried from earlier runs. A missing file is an empty baseline, which makes every
+      claim new rather than silently suppressing anything.
+    required: false
+    default: .docket/baseline.json
+  no-model:
+    description: >-
+      Answer only the two questions that need no model. Free, offline, and seconds; the default,
+      because a CI job that needs a provider key is a CI job most repositories will not run.
+    required: false
+    default: "true"
+  out:
+    description: Directory for triage.json and openvex.json.
+    required: false
+    default: .docket/out
+  fail-on-new:
+    description: Exit 1 when the queue holds a claim nobody has decided.
+    required: false
+    default: "false"
+  fail-on-stale:
+    description: Exit 1 when a decision's code changed, so the decision no longer applies.
+    required: false
+    default: "false"
+  fail-on-status:
+    description: >-
+      Exit 1 when a carried decision has this status: exploitable, not_exploitable, or
+      undetermined. Empty to never fail on a status.
+    required: false
+    default: ""
+  version:
+    description: The docket ref to install.
+    required: false
+    default: main
+
+outputs:
+  summary:
+    description: Path to the Markdown summary.
+    value: ${{ steps.run.outputs.summary }}
+  vex:
+    description: Path to the OpenVEX document.
+    value: ${{ steps.run.outputs.vex }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Triage
+      id: run
+      shell: bash
+      env:
+        DOCKET_FINDING: ${{ inputs.finding }}
+        DOCKET_REPO: ${{ inputs.repo }}
+        DOCKET_COMMIT: ${{ inputs.commit }}
+        DOCKET_BASELINE: ${{ inputs.baseline }}
+        DOCKET_OUT: ${{ inputs.out }}
+        DOCKET_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$DOCKET_OUT"
+        args=(
+          "$DOCKET_FINDING"
+          --repo "$DOCKET_REPO"
+          --commit "$DOCKET_COMMIT"
+          --out "$DOCKET_OUT"
+          --summary "$DOCKET_OUT/summary.md"
+          --baseline "$DOCKET_BASELINE"
+        )
+        [ "${{ inputs.no-model }}" = "true" ] && args+=(--no-model)
+        [ "${{ inputs.fail-on-new }}" = "true" ] && args+=(--fail-on-new)
+        [ "${{ inputs.fail-on-stale }}" = "true" ] && args+=(--fail-on-stale)
+        [ -n "${{ inputs.fail-on-status }}" ] && args+=(--fail-on-status "${{ inputs.fail-on-status }}")
+
+        echo "summary=$DOCKET_OUT/summary.md" >> "$GITHUB_OUTPUT"
+        echo "vex=$DOCKET_OUT/openvex.json" >> "$GITHUB_OUTPUT"
+
+        # The step summary is written by docket itself, from GITHUB_STEP_SUMMARY.
+        uvx --from "git+https://github.com/ethanpturner/docket@$DOCKET_VERSION" \
+          docket triage "${args[@]}"
