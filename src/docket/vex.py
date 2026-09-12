@@ -78,9 +78,27 @@ def _statement(record: DispositionRecord, product_id: str) -> dict[str, Any]:
     }
 
     if record.disposition.status is Status.NOT_EXPLOITABLE:
-        # The spec requires one of the two; `impact_statement` carries the reviewer's own words
-        # when no fixed label fits. A later phase chooses a `justification` where one applies.
-        statement["impact_statement"] = record.disposition.reason
+        # The spec requires one of the two. The reviewer's selected label goes in `justification`,
+        # the machine-readable half and the only part a consumer can act on; their words go in
+        # `impact_statement` beside it, which the spec permits and its own example does. A
+        # dismissal carrying neither cannot be constructed -- `Disposition` and `Decision` both
+        # refuse it -- so the guard below is the third place this rule holds rather than the first,
+        # and it exists because emitting invalid VEX is the one failure a consumer inherits.
+        if record.disposition.justification is not None:
+            statement["justification"] = record.disposition.justification
+        impact = (record.disposition.impact_statement or record.disposition.reason).strip()
+        if impact:
+            statement["impact_statement"] = impact
+        if "justification" not in statement and "impact_statement" not in statement:
+            raise ValueError(
+                f"claim {record.claim.claim_id}: a not_affected statement needs a justification "
+                f"or an impact statement, and this has neither"
+            )
+        if record.disposition.override_reason:
+            # Not a spec field. A consumer ignores it; a human reading the document sees that the
+            # label was selected against the assessment rather than from it, which is the one fact
+            # a bare justification loses.
+            statement["docket_override_reason"] = record.disposition.override_reason
     elif record.disposition.status is Status.EXPLOITABLE:
         statement["action_statement"] = record.disposition.reason
 

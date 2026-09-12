@@ -1,0 +1,61 @@
+{
+  "manifest": ".",
+  "verdict": "contradicted",
+  "coverage": "4 artifact digests re-computed and 5 quoted spans re-read from the repository.",
+  "checks": [
+    {
+      "kind": "artifact",
+      "subject": "decisions: decisions.json",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "finding: finding.jsonl",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "record: record.json",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "recording: ../recordings/assessments.jsonl",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/main.py:31",
+      "verdict": "contradicted",
+      "detail": "the code at the cited position is not what the record quotes"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/config.py:18",
+      "verdict": "verified",
+      "detail": "the code at the cited position is byte-identical to what was quoted"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/signing.py:12",
+      "verdict": "verified",
+      "detail": "the code at the cited position is byte-identical to what was quoted"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/notifier.py:40",
+      "verdict": "verified",
+      "detail": "the code at the cited position is byte-identical to what was quoted"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d tests/test_forged_delivery.py:35",
+      "verdict": "verified",
+      "detail": "the code at the cited position is byte-identical to what was quoted"
+    }
+  ]
+}

@@ -378,3 +378,209 @@ produced is reported in the README as the finding that caused this entry, not as
 Whether the three model-answered questions should each be asked twice with the proposition negated,
 and disagreement between the two treated as `not_established`. That would catch this class of error
 without a human noticing a suspicious distribution, at three times the cost.
+
+---
+
+## DEC-009 — A dismissal selects a label or writes the statement; the reason is not a fallback
+
+**Date:** 2026-09-11
+**Status:** Accepted. Supersedes the fallback in DEC-001.
+
+### Decision
+
+A `not_exploitable` disposition carries a `justification` from the fixed five-label catalogue, or
+an `impact_statement` the reviewer wrote, and it is refused at construction without one of them.
+`DEC-001` had the emitter fall back to the reviewer's `reason` as the impact statement; that
+fallback is removed.
+
+Both fields may be present, and on a decided dismissal both usually are: the label is what a
+consumer acts on, the statement is what a person reads.
+
+### Why
+
+The fallback made the rule unfailable. A `reason` is required on every disposition, so "a
+dismissal has a justification or an impact statement" was satisfied by a field that is always
+populated, and no input could ever violate it. A check that cannot come out false is not a check,
+and this project has now found four of them in two days -- a report section filtered on a status
+nothing set, a compliance rate scored against authored recordings, a fence that covered only the
+material it was pointed at, and this.
+
+There is a second, sharper reason. OpenVEX highly discourages `impact_statement` for automated
+consumers and exists to make dismissals machine-readable; the whole argument for shipping in VEX
+rather than a vocabulary of our own is that the machine-readable field is what makes the record
+consumable. A fallback that silently fills the prose field on every dismissal produces documents
+that satisfy the spec and carry nothing a scanner can key on. Asking the reviewer for one more
+flag is the entire difference.
+
+### Alternatives considered
+
+- **Keep the fallback and warn.** Rejected: a warning on the common path is read once.
+- **Infer a justification from the assessment's candidates.** Rejected, and it is the tempting
+  one. A candidate is evidence that a label *could* apply; selecting it is the decision, and
+  `DEC-002` puts that with the person. Inferring it would put the tool's name on the reviewer's
+  judgement.
+- **Require the label and drop `impact_statement` entirely.** Rejected: the spec permits prose,
+  and there are real dismissals no label fits -- "this is intentional behaviour" is not among the
+  five.
+
+### Tradeoffs
+
+One more flag on the command that a reviewer runs most. Measured against the alternative, which
+is a corpus of dismissals whose reasons are unreadable to the thing consuming them.
+
+### Open questions
+
+Whether a sixth justification for intentional behaviour should be proposed upstream. It would be
+the honest home for a large class of real dismissals, and it does not exist.
+
+---
+
+## DEC-010 — A person may decide against the evidence, and the record says that they did
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+Selecting a justification the assessment did not offer as a candidate is refused *unless* the
+reviewer supplies an override reason, which is recorded on the decision, on the record, and in the
+emitted VEX as `docket_override_reason`. The rule is enforced when the decision is made and again
+when a decision file is read, because the file is meant to be hand-edited and the edit is where an
+override goes missing.
+
+An assessment with no candidates at all -- `--no-model`, or a claim that only went through
+`record` -- offers nothing, so every justification against it is an override. That is the correct
+reading rather than an inconvenience.
+
+### Why
+
+A reviewer overruling the gathered evidence is legitimate and common. The evidence is five narrow
+questions answered against one commit; a person who knows the deployment knows things a call graph
+cannot see, and the assessment's own caveats say so. A tool that refused the override would be
+asserting its evidence is complete, which is the claim it spends every other page denying.
+
+What must not happen is that the override is invisible. Six months later, "the tool found this and
+a person agreed" and "a person decided this over the tool's objection" are different facts about
+how much checking happened, and a bare `justification` field cannot tell them apart. The override
+field is the only place that difference survives.
+
+### Alternatives considered
+
+- **Allow any justification silently.** Rejected: it makes the candidate list decorative and the
+  record unable to distinguish the two cases above.
+- **Refuse the override outright.** Rejected as above; it would also push reviewers into the
+  `impact_statement` field to get around the check, which loses the label as well as the trace.
+- **Record the override but not require a reason.** Rejected: a flag with no argument is the same
+  unexplained assertion the tool exists to replace, one level in.
+
+### Tradeoffs
+
+A reviewer in a hurry types a short override reason, and a short bad reason is recorded as
+faithfully as a good one. This tool records who decided and why; it does not grade the answer.
+
+### Open questions
+
+Whether an override should also be counted -- a rate of decisions made against the evidence, per
+reviewer or per corpus, would say something about whether the gathering is worth its cost. The
+field is there for it and nothing computes it yet.
+
+---
+
+## DEC-011 — A binding re-derives the quoted code, not only the file digests
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+`docket bind` digests the artifacts -- the finding as received, the record, the model recording,
+the decision file -- and separately records every resolved locator with the digest of the bytes
+that were quoted from it. `docket verify` re-computes the artifact digests, and, when given a
+repository, re-resolves each locator and compares the code that is there now against what the
+record quotes. Without a repository those span checks are `unverifiable`, never `verified`, and
+the coverage line states which checks ran.
+
+Verification exits non-zero on `contradicted` and zero on `unverifiable`, unless
+`--fail-on-unverifiable` is passed.
+
+### Why
+
+Re-digesting the artifacts answers "are these the same files", which is a statement about bytes on
+one machine. It does not catch the failure that actually matters here: a record whose files are
+all intact while the code it describes has moved underneath it. A dismissal that was correct
+against one commit and is quietly wrong against the next is the specific way a triage record rots,
+and the only check that sees it is re-reading the cited position.
+
+Re-resolving the recorded locator rather than opening the recorded path is deliberate: one code
+path produces a quotation and one code path checks it, so the truncation cap and the
+repository-containment rule cannot drift apart between recording and verification.
+
+The exit codes follow the adoption argument the whole tool is built on. A scanner that arrives
+failing builds is uninstalled before anyone reads a finding, so `contradicted` -- something
+recorded here is no longer true -- fails, and an unknown does not.
+
+### Alternatives considered
+
+- **Re-execute something, as the sibling attestation project does.** There is no command here.
+  The decision is a person's, and re-running it is not a thing a machine can do; digesting what it
+  was made from is.
+- **Require the repository.** Rejected: the common case is verifying a record somebody sent you,
+  and refusing to say anything about the artifacts without a checkout would make the tool useless
+  exactly when it is most needed. The `unverifiable` verdict and the coverage line are the honest
+  version.
+- **Sign the manifest here.** Rejected for now. The manifest is emitted in in-toto Statement shape
+  so `cosign attest-blob` can sign it and `verify-blob-attestation` can check it offline, and
+  neither tool needs to know anything about docket. Emitting an unsigned envelope and calling it
+  an attestation would be the category error this project is about.
+
+### Tradeoffs
+
+The span check is only as good as the locators the claim cited. A claim citing nothing has no
+spans, so its binding is artifact digests alone, and the coverage line says `0 quoted spans` --
+accurate, and thinner than a reader might assume from the word "verified".
+
+### Open questions
+
+Whether to record the commit's own object identifier and check it, rather than trusting the
+`--commit` string a caller passed. It would turn "the code at this position" into "the code at
+this position of this commit", and it needs a git dependency this package does not have.
+
+---
+
+## DEC-012 — `fixed` is not a disposition this tool reaches
+
+**Date:** 2026-09-11
+**Status:** Accepted
+
+### Decision
+
+OpenVEX has four status labels and docket emits three. `fixed` is not offered as a disposition.
+
+### Why
+
+A record binds one claim to one commit. `fixed` asserts that *some other* version of the product
+contains a remedy, and this tool has examined exactly one version, so it would be emitting a
+statement about something it never looked at.
+
+There is also no gap to fill. A claim that was real and has been remedied at the commit under
+examination is `not_affected` with `vulnerable_code_not_present`, which is both true and more
+precise. A claim remedied in a later release is a statement about that release, and belongs in a
+VEX document issued for it.
+
+### Alternatives considered
+
+- **Offer `fixed` with the remediating commit as a field.** Rejected: the tool would be recording
+  a claim about a commit it did not resolve, quote, or assess. Every other status on the record is
+  backed by something that was read.
+
+### Tradeoffs
+
+A team tracking remediation wants `fixed` and will have to issue that statement from wherever they
+track releases. This is a narrower tool than their workflow needs, which is the accurate thing for
+it to be.
+
+### Open questions
+
+Whether a later phase that takes two commits -- the one the claim was made against and the one it
+was fixed in -- should emit `fixed` over both. That version would have looked at both, which is
+the condition this entry actually rests on.

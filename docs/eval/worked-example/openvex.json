@@ -1,0 +1,24 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://openvex.dev/docs/docket/codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+  "author": "docket",
+  "timestamp": "2026-09-12T02:27:20.529697+00:00",
+  "version": 1,
+  "tooling": "docket/0.3.0",
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+        "description": "CWE-306, CWE-347: Unsigned requests can publish forged deployment notifications"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/ethanpturner/trace@c5b0590320fc0c3d54523ec290b3fa47c69862e8#benchmarks/unsigned-webhooks/code"
+        }
+      ],
+      "status": "affected",
+      "timestamp": "2026-09-12T02:27:20.529697+00:00",
+      "action_statement": "Four of the five questions found no escape route: the cited paths all resolve, the span contains the unverified dispatch the claim describes, the handler is reachable from the route, and no control on the path prevents it. The fifth - whether attacker-controlled input reaches it - was never answered, because that gathering call timed out, so I read main.py myself rather than treating silence as a pass: the route takes the request body directly. The repository's own tests assert a forged delivery is accepted with 202."
+    }
+  ]
+}

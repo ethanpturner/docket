@@ -52,9 +52,10 @@ VEX documents as a filter.
 | `not_exploitable` | `not_affected` | the evidence contradicts it, and the reason is named |
 | `undetermined` | `under_investigation` | nobody has established either |
 
-OpenVEX requires a `justification` or an `impact_statement` on any `not_affected` statement. That is
-the same discipline this tool applies anyway: a dismissal states its argument. A status with no
-reason is refused at construction.
+OpenVEX requires a `justification` or an `impact_statement` on any `not_affected` statement, and
+`fixed`, its fourth label, is not a disposition this tool reaches: a record binds one claim to one
+commit, and `fixed` asserts something about a version it never examined (`DEC-012`). A status with
+no reason, and a dismissal with no argument, are both refused at construction.
 
 ## Gathering evidence
 
@@ -161,10 +162,91 @@ were backwards, which is the same failure one step earlier. `DEC-008` records it
 carries an affirmative `proposition` that is the only thing a model is shown, and the pre-fix figure
 is kept here as the finding that produced the entry rather than as a result.
 
+## Deciding, and binding the decision to what it was made from
+
+`record` and `assess` refuse to reach a status. `decide` is what they refuse in favour of.
+
+```
+docket decide record.json --claim C --status not_exploitable \
+  --justification vulnerable_code_not_in_execute_path \
+  --reason "the handler is registered but never mounted in this deployment" \
+  --decided-by you@example.com
+```
+
+Four rules refuse a decision, and each one exists because the field it guards is the field a
+triage queue currently leaves empty:
+
+- **A status with no reason** is an assertion without an argument.
+- **A decided status with no decider** is a verdict nobody is accountable for.
+- **A dismissal with neither a justification nor an impact statement.** OpenVEX requires one; an
+  earlier version satisfied that by falling back to the reviewer's reason, which made the check
+  unfailable, because a reason is always present. `DEC-009` removed the fallback.
+- **A justification the assessment did not offer** — unless the reviewer says they are overriding
+  the evidence, and why. Overruling five narrow questions answered against one commit is
+  legitimate and common. The record has to show that it happened: six months later, "the tool
+  found this and a person agreed" and "a person decided this over the tool's objection" are
+  different facts about how much checking was done, and a bare justification label cannot tell
+  them apart. The override travels into the VEX document as `docket_override_reason`.
+
+`bind` then digests the finding as received, the record, the model calls, and the decision into
+one manifest, and `verify` re-derives it.
+
+```
+docket bind record.json --decisions decisions.json --finding finding.jsonl --out ./out
+docket verify out/binding.json --repo ./app
+```
+
+**Two checks, and they are not equally strong.** Re-digesting the artifacts answers *are these the
+same files*. Re-reading the quoted spans from the repository answers *does the code still say what
+the record quotes*, which is the question that catches a dismissal going quietly stale while every
+file around it stays byte-identical. Without a repository the span checks are `unverifiable`, and
+the coverage line says so rather than leaving a reader to infer it from which flags were passed.
+
+`verify` exits non-zero on `contradicted` — something recorded here is no longer true — and zero
+on `unverifiable`, because an unknown is not a failure. Nothing is signed: the manifest is emitted
+in in-toto Statement shape so `cosign attest-blob --type <predicate> --predicate binding.json`
+signs it and `cosign verify-blob-attestation --bundle ... --trusted-root ...` checks it offline,
+without either tool learning anything about docket.
+
+## The worked example
+
+One real claim, carried the whole way, committed under
+[`docs/eval/worked-example/`](docs/eval/worked-example/). Everything it needs is in the repository,
+so it replays with no key and no network, and three tests re-derive it on every CI run.
+
+The claim is Codex Security's, against the `unsigned-webhooks` application at `trace@c5b0590`:
+*unsigned requests can publish forged deployment notifications*, citing five positions.
+
+| Step | Result |
+|---|---|
+| `record` | 5 of 5 cited locators resolve |
+| `assess` | 4 of 5 questions contradict a dismissal; 1 not established |
+| `decide` | `exploitable`, by a named person, with their reason |
+| `bind` | 4 artifacts digested, 5 quoted spans recorded |
+| `verify` | `verified` |
+
+The unanswered question is the interesting part. *Can attacker-controlled input reach it?* was
+never answered, because that gathering call timed out during the measurement run — so the reviewer
+read `main.py` themselves and said so in the reason, rather than letting silence read as a pass.
+That is the whole product in one line.
+
+The three verdicts are committed in
+[`verifications/`](docs/eval/worked-example/verifications/):
+
+| Run | Verdict | Exit |
+|---|---|---|
+| With the repository | `verified` | 0 |
+| Without the repository | `unverifiable` — the spans were not re-read | 0 |
+| With one cited line edited | `contradicted` — the code is not what the record quotes | 1 |
+
+The third is the check the artifact digests cannot make. Every file in the binding was still
+byte-identical; the code had moved.
+
 ## Status
 
-Phase 1. `record` checks a claim's citations; `assess` gathers evidence for the five questions and
-still decides nothing. A person sets a status, and the record names them. Phase 2 signs the result.
+Phase 2. `record` checks a claim's citations, `assess` gathers evidence for the five questions and
+decides nothing, `decide` is where a person does, and `bind` and `verify` make that decision
+checkable afterwards without a key.
 
 Install from a clone: `uv sync`, then `uv run docket --help`.
 

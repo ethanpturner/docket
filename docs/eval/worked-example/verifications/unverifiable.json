@@ -1,0 +1,61 @@
+{
+  "manifest": ".",
+  "verdict": "unverifiable",
+  "coverage": "4 artifact digests re-computed. The quoted spans were NOT re-read: no repository was given, so nothing here establishes that the code still says what the record quotes.",
+  "checks": [
+    {
+      "kind": "artifact",
+      "subject": "decisions: decisions.json",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "finding: finding.jsonl",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "record: record.json",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "artifact",
+      "subject": "recording: ../recordings/assessments.jsonl",
+      "verdict": "verified",
+      "detail": "digest matches"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/main.py:31",
+      "verdict": "unverifiable",
+      "detail": "no repository given; the quoted bytes were not re-read"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/config.py:18",
+      "verdict": "unverifiable",
+      "detail": "no repository given; the quoted bytes were not re-read"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/signing.py:12",
+      "verdict": "unverifiable",
+      "detail": "no repository given; the quoted bytes were not re-read"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d deploy_notifier/notifier.py:40",
+      "verdict": "unverifiable",
+      "detail": "no repository given; the quoted bytes were not re-read"
+    },
+    {
+      "kind": "span",
+      "subject": "span: codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d tests/test_forged_delivery.py:35",
+      "verdict": "unverifiable",
+      "detail": "no repository given; the quoted bytes were not re-read"
+    }
+  ]
+}

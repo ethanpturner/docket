@@ -79,7 +79,12 @@ def test_the_status_map_covers_every_status():
 
 
 def test_not_affected_carries_an_argument(repo, finding):
-    """The spec requires a justification or an impact statement for `not_affected`."""
+    """The spec requires a justification or an impact statement for `not_affected`.
+
+    Phase 1 satisfied that by falling back to the reviewer's `reason`, which made the check
+    unfailable, because a reason is always present. DEC-009 removed the fallback: a reviewer
+    picks a label from the catalogue or writes the statement themselves.
+    """
     base = records_for_file(finding, repo=repo, commit="c" * 40)[0]
     decided = DispositionRecord(
         claim=base.claim,
@@ -90,13 +95,25 @@ def test_not_affected_carries_an_argument(repo, finding):
             status=Status.NOT_EXPLOITABLE,
             reason="the sink is unreachable from any entry point",
             decided_by="reviewer@example.com",
+            justification="vulnerable_code_not_in_execute_path",
         ),
     )
     statement = vex_document([decided], author="a", document_id="https://x/1", product_id="p")[
         "statements"
     ][0]
     assert statement["status"] == "not_affected"
+    assert statement["justification"] == "vulnerable_code_not_in_execute_path"
     assert statement["impact_statement"]
+
+
+def test_a_dismissal_without_an_argument_cannot_be_constructed():
+    """The rule holds at construction, so an invalid record never reaches the emitter."""
+    with pytest.raises(ValueError, match="justification or an impact statement"):
+        Disposition(
+            status=Status.NOT_EXPLOITABLE,
+            reason="it is fine",
+            decided_by="reviewer@example.com",
+        )
 
 
 def test_an_empty_document_is_refused():

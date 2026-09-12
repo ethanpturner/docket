@@ -1,0 +1,215 @@
+[
+  {
+    "docket_version": "0.3.0",
+    "recorded_at": "2026-09-12T02:27:20.529697+00:00",
+    "claim": {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "title": "Unsigned requests can publish forged deployment notifications",
+      "weakness": "CWE-306, CWE-347",
+      "severity_claimed": "medium",
+      "source": {
+        "tool": "Codex Security",
+        "version": null,
+        "format": "codex-security"
+      },
+      "raw_text": "{\n  \"code_paths\": [\n    \"deploy_notifier/main.py:31\",\n    \"deploy_notifier/config.py:18\",\n    \"deploy_notifier/signing.py:12\",\n    \"deploy_notifier/notifier.py:40\",\n    \"tests/test_forged_delivery.py:35\"\n  ],\n  \"cwe\": [\n    \"CWE-306\",\n    \"CWE-347\"\n  ],\n  \"discovery_commit\": null,\n  \"finding_id\": \"csf_476c1cbff5ef3a72273996d8\",\n  \"production_viability\": null,\n  \"repro_status\": \"Independent static source trace corroborated by focused review and source tests\",\n  \"severity\": \"medium\",\n  \"signature\": \"codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d\",\n  \"status\": \"unknown\",\n  \"title\": \"Unsigned requests can publish forged deployment notifications\"\n}",
+      "locators_claimed": [
+        "deploy_notifier/main.py:31",
+        "deploy_notifier/config.py:18",
+        "deploy_notifier/signing.py:12",
+        "deploy_notifier/notifier.py:40",
+        "tests/test_forged_delivery.py:35"
+      ]
+    },
+    "target": {
+      "repository": "target",
+      "commit": "c5b0590320fc0c3d54523ec290b3fa47c69862e8"
+    },
+    "locators": [
+      {
+        "locator": "deploy_notifier/main.py:31",
+        "resolution": "resolves",
+        "path": "deploy_notifier/main.py",
+        "start_line": 31,
+        "end_line": 31,
+        "line_count": 59,
+        "quoted_text": "@app.post(\"/events\", status_code=status.HTTP_202_ACCEPTED)",
+        "content_hash": "sha256:2f3367462dd1f112693a5ca9bc55d161c2e83f99390fc7e9a597c6f3e6a75003",
+        "truncated": false
+      },
+      {
+        "locator": "deploy_notifier/config.py:18",
+        "resolution": "resolves",
+        "path": "deploy_notifier/config.py",
+        "start_line": 18,
+        "end_line": 18,
+        "line_count": 28,
+        "quoted_text": "def load_settings() -> Settings:",
+        "content_hash": "sha256:2ddcabe9b8329e33e59f9e05a1ae8b1f89c2446c2985364b41e573f62fdf1f26",
+        "truncated": false
+      },
+      {
+        "locator": "deploy_notifier/signing.py:12",
+        "resolution": "resolves",
+        "path": "deploy_notifier/signing.py",
+        "start_line": 12,
+        "end_line": 12,
+        "line_count": 31,
+        "quoted_text": "SIGNATURE_HEADER = \"X-CI-Signature-256\"",
+        "content_hash": "sha256:ecce66a702a1632c182e39ef0899e0b68fe36b91214a52d91cf136c74c0891a9",
+        "truncated": false
+      },
+      {
+        "locator": "deploy_notifier/notifier.py:40",
+        "resolution": "resolves",
+        "path": "deploy_notifier/notifier.py",
+        "start_line": 40,
+        "end_line": 40,
+        "line_count": 51,
+        "quoted_text": "    def post(self, event: DeploymentEvent) -> str:",
+        "content_hash": "sha256:c3eefb1aa302696caa9ee3df62ff3d1959b6d1ca1ddfa46a7c0042734ccad1f5",
+        "truncated": false
+      },
+      {
+        "locator": "tests/test_forged_delivery.py:35",
+        "resolution": "resolves",
+        "path": "tests/test_forged_delivery.py",
+        "start_line": 35,
+        "end_line": 35,
+        "line_count": 67,
+        "quoted_text": "def test_unsigned_delivery_is_accepted_and_posted(client: TestClient) -> None:",
+        "content_hash": "sha256:c34cb6853ac0dd73a4f65cf8da44f87e479399b76310130f842506430afb9100",
+        "truncated": false
+      }
+    ],
+    "locator_summary": {
+      "total": 5,
+      "resolved": 5,
+      "by_resolution": {
+        "resolves": 5,
+        "path_absent": 0,
+        "line_out_of_range": 0,
+        "not_a_locator": 0
+      }
+    },
+    "disposition": {
+      "status": "undetermined",
+      "reason": "no assessment performed",
+      "decided_by": null,
+      "decided_at": null,
+      "justification": null,
+      "impact_statement": null,
+      "overrides_evidence": false,
+      "override_reason": null
+    },
+    "assessment": {
+      "assessed_at": "2026-09-12T02:27:20.534437+00:00",
+      "model": "openai/gpt-5.1",
+      "model_calls": 3,
+      "input_tokens": 1698,
+      "output_tokens": 523,
+      "duration_seconds": 0.0,
+      "questions": [
+        {
+          "question": "component_present",
+          "asks": "Is the cited file present in this repository at this commit?",
+          "bears_on_justification": "component_not_present",
+          "settled_by": "resolver",
+          "answer": "contradicts_justification",
+          "detail": "the cited component is present, so this justification does not apply",
+          "evidence": [
+            {
+              "source": "resolver",
+              "summary": "5 of 5 cited positions resolve at c5b0590320fc",
+              "locator": null,
+              "quoted_text": null,
+              "content_hash": null
+            }
+          ],
+          "could_not_establish": [],
+          "model_failed": null
+        },
+        {
+          "question": "construct_present",
+          "asks": "Does the cited span contain the construct the claim describes?",
+          "bears_on_justification": "vulnerable_code_not_present",
+          "settled_by": "model",
+          "answer": "contradicts_justification",
+          "detail": "",
+          "evidence": [
+            {
+              "source": "model",
+              "summary": "At the cited position `deploy_notifier/config.py:18`, there is a function definition `def load_settings() -> Settings:`. In its body, it reads several environment variables (`DELIVERY_LEDGER_CAPACITY`, `CHAT_API_URL`, `CHAT_CHANNEL`, `CHAT_TOKEN`, `CI_SIGNING_SECRET`), applies defaults where specified, converts `DELIVERY_LEDGER_CAPACITY` to an integer, and returns a `Settings` object initialized with those values. This function is present and implemented at that location.",
+              "locator": null,
+              "quoted_text": null,
+              "content_hash": null
+            }
+          ],
+          "could_not_establish": [
+            "Whether any other cited paths in the claim (e.g., deploy_notifier/main.py:31, deploy_notifier/signing.py:12, deploy_notifier/notifier.py:40, tests/test_forged_delivery.py:35) contain or do not contain the code the claim describes, because their contents were not provided.",
+            "What specific behavior the external claim is describing, beyond knowing that `load_settings` exists and reads configuration from environment variables."
+          ],
+          "model_failed": null
+        },
+        {
+          "question": "reachable",
+          "asks": "Is the cited code reachable from an entry point?",
+          "bears_on_justification": "vulnerable_code_not_in_execute_path",
+          "settled_by": "call_graph",
+          "answer": "contradicts_justification",
+          "detail": "a caller or entry point was found for a cited position, so this justification does not apply",
+          "evidence": [
+            {
+              "source": "call_graph",
+              "summary": "`load_settings` at `deploy_notifier/config.py:18` is called from `deploy_notifier/main.py::<module>`",
+              "locator": "`deploy_notifier/config.py:18`",
+              "quoted_text": null,
+              "content_hash": null
+            }
+          ],
+          "could_not_establish": [],
+          "model_failed": null
+        },
+        {
+          "question": "attacker_controlled",
+          "asks": "Can input an attacker controls reach the cited code?",
+          "bears_on_justification": "vulnerable_code_cannot_be_controlled_by_adversary",
+          "settled_by": "model",
+          "answer": "not_established",
+          "detail": "a model was asked and did not answer",
+          "evidence": [],
+          "could_not_establish": [],
+          "model_failed": "not_recorded: no recorded response for request sha256:b9bf723390e09dcd6a9ce1b294a4cfb21c17639e221821dc97502f9149cb7fac"
+        },
+        {
+          "question": "mitigation_present",
+          "asks": "Is there a control on the path that the claim did not account for?",
+          "bears_on_justification": "inline_mitigations_already_exist",
+          "settled_by": "model",
+          "answer": "contradicts_justification",
+          "detail": "",
+          "evidence": [
+            {
+              "source": "model",
+              "summary": "The function `load_settings()` constructs and returns a `Settings` object using environment variables. In particular:\n- It reads `CI_SIGNING_SECRET` from the environment and assigns its value (or `None` if unset/empty) to the `ci_signing_secret` field of `Settings`.\n- It also reads `CHAT_API_URL`, `CHAT_CHANNEL`, `CHAT_TOKEN`, and `DELIVERY_LEDGER_CAPACITY` from the environment, with defaults where specified.\n\nThus, whether a signing secret is present or not is entirely determined by the runtime environment configuration; if `CI_SIGNING_SECRET` is not set or is empty, `ci_signing_secret` will be `None`.\n\nThe code shown does not implement any control that inherently enforces the presence or use of a signing secret; it only exposes configuration that can enable or disable such a secret by environment settings.",
+              "locator": null,
+              "quoted_text": null,
+              "content_hash": null
+            }
+          ],
+          "could_not_establish": [
+            "How `Settings.ci_signing_secret` is used elsewhere in the application (e.g., whether its absence is allowed, causes errors, or changes behavior).",
+            "Whether there are additional controls (e.g., mandatory signature verification) in other parts of the codebase not shown here.",
+            "Whether a user, operator, or attacker can influence the environment variables at runtime in the deployment context."
+          ],
+          "model_failed": null
+        }
+      ],
+      "candidate_justifications": [],
+      "not_established": [
+        "attacker_controlled"
+      ],
+      "note": "Candidate justifications are not decisions. The status remains undetermined until a person sets it, and this tool does not select a justification."
+    }
+  }
+]

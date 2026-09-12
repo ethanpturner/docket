@@ -1,0 +1,93 @@
+{
+  "format": "docket/binding/v1",
+  "bound_at": "2026-09-12T02:27:20.676307+00:00",
+  "docket_version": "0.3.0",
+  "scope": "This manifest records that the listed artifacts had the listed digests when the decision was made, and that the quoted spans were the bytes at the cited positions of the named commit. It does not claim the decision is correct, and it does not claim anything about material it was not told to digest.",
+  "target": {
+    "repository": "target",
+    "commit": "c5b0590320fc0c3d54523ec290b3fa47c69862e8"
+  },
+  "claims": [
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "status": "exploitable",
+      "justification": null,
+      "decided_by": "e.turner@example.com",
+      "overrides_evidence": false
+    }
+  ],
+  "undecided_claims": [],
+  "artifacts": [
+    {
+      "role": "decisions",
+      "path": "decisions.json",
+      "sha256": "sha256:8c390a840b37a5d9b30d74d1af3a51e1575aced1505bd7e488bdfd06b091087f",
+      "size": 1208
+    },
+    {
+      "role": "finding",
+      "path": "finding.jsonl",
+      "sha256": "sha256:3509ff9254279726a0ef801f2823b7610c95136cd3201c14646ea57f63deff68",
+      "size": 637
+    },
+    {
+      "role": "record",
+      "path": "record.json",
+      "sha256": "sha256:029d955ef5785e40dfbd5c3dbea07ebf02c556c28c09ee07e9414f106649fd22",
+      "size": 10416
+    },
+    {
+      "role": "recording",
+      "path": "../recordings/assessments.jsonl",
+      "sha256": "sha256:ef503a826b04d54857306598eb725ee201baf960f6cf8a58ad22761e7d0fafb3",
+      "size": 735301
+    }
+  ],
+  "quoted_spans": [
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "locator": "deploy_notifier/main.py:31",
+      "path": "deploy_notifier/main.py",
+      "start_line": 31,
+      "end_line": 31,
+      "sha256": "sha256:2f3367462dd1f112693a5ca9bc55d161c2e83f99390fc7e9a597c6f3e6a75003",
+      "truncated": false
+    },
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "locator": "deploy_notifier/config.py:18",
+      "path": "deploy_notifier/config.py",
+      "start_line": 18,
+      "end_line": 18,
+      "sha256": "sha256:2ddcabe9b8329e33e59f9e05a1ae8b1f89c2446c2985364b41e573f62fdf1f26",
+      "truncated": false
+    },
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "locator": "deploy_notifier/signing.py:12",
+      "path": "deploy_notifier/signing.py",
+      "start_line": 12,
+      "end_line": 12,
+      "sha256": "sha256:ecce66a702a1632c182e39ef0899e0b68fe36b91214a52d91cf136c74c0891a9",
+      "truncated": false
+    },
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "locator": "deploy_notifier/notifier.py:40",
+      "path": "deploy_notifier/notifier.py",
+      "start_line": 40,
+      "end_line": 40,
+      "sha256": "sha256:c3eefb1aa302696caa9ee3df62ff3d1959b6d1ca1ddfa46a7c0042734ccad1f5",
+      "truncated": false
+    },
+    {
+      "claim_id": "codex-security/v1:sha256:e525edb75540d725e5dec7b87c7adda96d548ee29a379fa5f96f080b264c118d",
+      "locator": "tests/test_forged_delivery.py:35",
+      "path": "tests/test_forged_delivery.py",
+      "start_line": 35,
+      "end_line": 35,
+      "sha256": "sha256:c34cb6853ac0dd73a4f65cf8da44f87e479399b76310130f842506430afb9100",
+      "truncated": false
+    }
+  ]
+}

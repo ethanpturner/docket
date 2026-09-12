@@ -1,6 +1,6 @@
 [project]
 name = "docket"
-version = "0.2.0"
+version = "0.3.0"
 description = "Records the disposition of a security finding: exploitable, not exploitable, or undetermined, with the evidence behind it"
 readme = "README.md"
 license = "MIT"
@@ -44,6 +44,10 @@ disallow_incomplete_defs = false
 target-version = "py314"
 line-length = 100
 src = ["src", "tests"]
+# The worked example's target is a byte-identical copy of the code a reviewer was looking at,
+# and the binding's span digests pin those exact bytes. Formatting it would break the example
+# it exists to support, so it is excluded rather than fixed.
+extend-exclude = ["docs/eval/worked-example/target"]
 
 [tool.ruff.lint]
 select = [

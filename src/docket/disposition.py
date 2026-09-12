@@ -29,6 +29,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
+from docket._version import __version__
 from docket.resolve import Resolution
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ __all__ = [
     "DispositionRecord",
     "Status",
     "record_for",
+    "record_from_dict",
 ]
 
 # Phase 0's only reason. Stated as a constant so the string in the record, the string in the tests,
@@ -62,14 +64,30 @@ class Disposition:
 
     `decided_by` is absent in Phase 0 and required for any status other than `undetermined` in
     later phases: a verdict nobody signed is a verdict nobody is accountable for.
+
+    The justification fields mirror what OpenVEX requires of a `not_affected` statement, and they
+    are checked here rather than only at emission. A record that cannot be emitted as valid VEX
+    should not exist, and finding that out at the end of a pipeline is how an invalid record comes
+    to be written to disk and read by somebody.
     """
 
     status: Status
     reason: str
     decided_by: str | None = None
     decided_at: datetime | None = None
+    justification: str | None = None
+    """One of OpenVEX's five labels, set only on `not_exploitable`. See `vex.JUSTIFICATIONS`."""
+
+    impact_statement: str | None = None
+    """The spec's free-prose alternative to a justification, for a dismissal no label fits."""
+
+    override_reason: str | None = None
+    """Present when the reviewer selected a justification the assessment did not offer. Its own
+    field, so that deciding against the evidence never looks like agreeing with it."""
 
     def __post_init__(self) -> None:
+        from docket.vex import JUSTIFICATIONS
+
         if not self.reason.strip():
             raise ValueError("a disposition states its reason; a status alone is an assertion")
         if self.status is not Status.UNDETERMINED and self.decided_by is None:
@@ -77,6 +95,28 @@ class Disposition:
                 f"status {self.status.value!r} requires `decided_by`: a person decides a "
                 f"disposition, and the record names them"
             )
+        if self.justification is not None and self.justification not in JUSTIFICATIONS:
+            raise ValueError(
+                f"{self.justification!r} is not an OpenVEX justification; the catalogue is fixed "
+                f"at five labels"
+            )
+        if self.justification is not None and self.status is not Status.NOT_EXPLOITABLE:
+            raise ValueError(
+                f"a justification is a reason a product is not affected, so it belongs only on "
+                f"{Status.NOT_EXPLOITABLE.value!r}, not {self.status.value!r}"
+            )
+        if self.status is Status.NOT_EXPLOITABLE and not (
+            self.justification or (self.impact_statement or "").strip()
+        ):
+            raise ValueError(
+                "OpenVEX requires a `not_affected` statement to carry a justification or an "
+                "impact statement; a dismissal states its argument"
+            )
+
+    @property
+    def is_decided(self) -> bool:
+        """Whether a person set this status. Phase 0's `undetermined` was not decided by anyone."""
+        return self.decided_by is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +133,8 @@ class DispositionRecord:
     locators: tuple[LocatorResolution, ...]
     disposition: Disposition
     recorded_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    docket_version: str = "0.1.0"
+    docket_version: str = __version__
+    """The version that wrote this record, stamped rather than hardcoded."""
 
     @property
     def resolved_count(self) -> int:
@@ -161,8 +202,76 @@ class DispositionRecord:
                 "decided_at": (
                     self.disposition.decided_at.isoformat() if self.disposition.decided_at else None
                 ),
+                "justification": self.disposition.justification,
+                "impact_statement": self.disposition.impact_statement,
+                "overrides_evidence": self.disposition.override_reason is not None,
+                "override_reason": self.disposition.override_reason,
             },
         }
+
+
+def record_from_dict(data: dict[str, Any]) -> DispositionRecord:
+    """Rebuild a record from its own JSON.
+
+    A written record that cannot be read back is not a record; it is a report. `decide` and `bind`
+    both operate on a file somebody wrote earlier, so the round trip is load-bearing rather than a
+    convenience, and every rebuilt object goes through the same constructors the original did.
+    """
+    from docket.claim import Claim as ClaimType
+    from docket.claim import ClaimSource
+    from docket.resolve import LocatorResolution as Loc
+    from docket.resolve import Resolution as Res
+
+    claim_data = data["claim"]
+    source = claim_data.get("source") or {}
+    claim = ClaimType(
+        claim_id=str(claim_data["claim_id"]),
+        title=str(claim_data.get("title") or ""),
+        raw_text=str(claim_data.get("raw_text") or ""),
+        locators=tuple(claim_data.get("locators_claimed") or ()),
+        weakness=claim_data.get("weakness"),
+        severity=claim_data.get("severity_claimed"),
+        source=ClaimSource(
+            tool=str(source.get("tool") or "unknown"),
+            version=source.get("version"),
+            format=str(source.get("format") or "unknown"),
+        ),
+    )
+    locators = tuple(
+        Loc(
+            locator=str(item["locator"]),
+            resolution=Res(item["resolution"]),
+            path=item.get("path"),
+            start_line=item.get("start_line"),
+            end_line=item.get("end_line"),
+            line_count=item.get("line_count"),
+            quoted_text=item.get("quoted_text"),
+            content_hash=item.get("content_hash"),
+            truncated=bool(item.get("truncated", False)),
+        )
+        for item in data.get("locators") or ()
+    )
+    held = data["disposition"]
+    decided_at = held.get("decided_at")
+    disposition = Disposition(
+        status=Status(held["status"]),
+        reason=str(held["reason"]),
+        decided_by=held.get("decided_by"),
+        decided_at=datetime.fromisoformat(decided_at) if decided_at else None,
+        justification=held.get("justification"),
+        impact_statement=held.get("impact_statement"),
+        override_reason=held.get("override_reason"),
+    )
+    target = data["target"]
+    return DispositionRecord(
+        claim=claim,
+        repository=str(target["repository"]),
+        commit=str(target["commit"]),
+        locators=locators,
+        disposition=disposition,
+        recorded_at=datetime.fromisoformat(data["recorded_at"]),
+        docket_version=str(data.get("docket_version") or "0.0.0"),
+    )
 
 
 def record_for(

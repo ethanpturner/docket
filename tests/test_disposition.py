@@ -79,16 +79,38 @@ def test_phase_zero_always_records_undetermined(repo, tmp_path):
             assert record.disposition.decided_by is None, name
 
 
-def test_no_code_path_reaches_another_status():
-    """The golden rule, checked structurally rather than by exercising every input.
+# Where a decided status may legitimately be named. `disposition.py` defines the vocabulary,
+# `vex.py` maps it, `decision.py` is a person's decision, and `__init__.py` parses their
+# command line. Everything else is the gathering path, and DEC-009 keeps it out of there.
+_MAY_NAME_A_DECIDED_STATUS = {"disposition.py", "vex.py", "decision.py", "__init__.py"}
 
-    A future edit that lets Phase 0 assert exploitability has to name the status to do it, so
-    finding no mention of the other two members outside their definition is the check.
+# The modules that read the code and call the model. Nothing here may reach a status at all --
+# not the enum, not the class, not a decision -- so no model response can become a verdict.
+_GATHERING_PATH = {
+    "assess.py",
+    "evidence.py",
+    "model.py",
+    "questions.py",
+    "reachability.py",
+    "resolve.py",
+    "ingest.py",
+    "claim.py",
+    "fence.py",
+}
+
+
+def test_only_a_person_s_path_names_a_decided_status():
+    """A decided status is reachable in Phase 2, and only from the modules a person drives.
+
+    Phase 0 could pin this absolutely: nothing outside the vocabulary named `EXPLOITABLE` or
+    `NOT_EXPLOITABLE`, so no code path reached one. Phase 2 adds the person, so the absolute form
+    is gone and the useful form is narrower -- the decision path may name a decided status, and
+    the gathering path may not (DEC-009).
     """
     offenders: list[str] = []
     for path in SOURCE_ROOT.glob("*.py"):
-        if path.name in {"disposition.py", "vex.py"}:
-            continue  # where the vocabulary is defined and mapped, not decided
+        if path.name in _MAY_NAME_A_DECIDED_STATUS:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute) and node.attr in {
@@ -96,7 +118,43 @@ def test_no_code_path_reaches_another_status():
                 "NOT_EXPLOITABLE",
             }:
                 offenders.append(f"{path.name}: Status.{node.attr}")
-    assert offenders == [], f"Phase 0 must not construct a decided status: {offenders}"
+    assert offenders == [], f"only the decision path may name a decided status: {offenders}"
+
+
+def test_the_gathering_path_cannot_reach_a_status_at_all():
+    """The guarantee that survives Phase 2: a model's output cannot become a verdict.
+
+    The modules that read source and call the provider do not import `Status`, `Disposition`, or
+    `Decision`, so there is no expression in any of them that produces a decided disposition. A
+    future edit wiring a model response to a status has to add an import here to do it.
+    """
+    forbidden = {"Status", "Disposition", "Decision", "apply_decision", "decide"}
+    offenders: list[str] = []
+    for name in sorted(_GATHERING_PATH):
+        path = SOURCE_ROOT / name
+        if not path.exists():  # pragma: no cover - the set is checked below
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name in forbidden:
+                        offenders.append(f"{name} imports {alias.name}")
+    assert offenders == [], f"the gathering path must not reach a status: {offenders}"
+
+
+def test_the_gathering_path_set_matches_the_package():
+    """The list above is a list, so it can go stale. A new module joins one side or the other."""
+    modules = {path.name for path in SOURCE_ROOT.glob("*.py")}
+    accounted = (
+        _GATHERING_PATH
+        | _MAY_NAME_A_DECIDED_STATUS
+        | {"binding.py", "verdict.py", "hashing.py", "render.py", "_version.py"}
+    )
+    assert modules - accounted == set(), (
+        f"new module(s) {sorted(modules - accounted)}: add each to the gathering path, to the "
+        f"decision path, or to the neutral set, so the structural pins keep covering the package"
+    )
 
 
 def test_a_decided_status_needs_a_person():
