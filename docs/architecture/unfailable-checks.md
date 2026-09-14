@@ -106,14 +106,67 @@ those files and nothing else, and the model calls replay from a committed record
 being re-run until the number improves — 21 of 177 calls returned nothing and are published as
 `not_established` for exactly that reason.
 
-## What the detector does not find
+## What the detector does not find, and what the actual remedy is
 
-The three branches a parser cannot settle are the ones that produced the worst of the six defects.
-`DEC-008`'s polarity bug is the case in point: every enum member was assigned, every branch was
-reachable, every test passed, and the tool was recording the opposite of what it had found. What
-caught it was a measurement whose shape was implausible — 28 `supports` and 0 `contradicts` on a
-question no real codebase answers one way.
+**The detector's yield was one in seven, and it would not have caught any of the three defects
+that prompted this sweep.** In all three, every enum member was assigned, every branch was
+reachable, and every test passed. `DEC-008`'s polarity bug is the case in point: the tool was
+recording the opposite of what it had found, and what caught it was a measurement whose shape was
+implausible — 28 `supports` and 0 `contradicts` on a question no real codebase answers one way.
 
-So the standing check is not this script. It is: for every published number, what input would
-change it; and for every invariant asserted in prose, which test fails if the enforcement is
-deleted.
+So the detector is a worklist, and **the coverage test is the remedy.**
+
+`tests/test_vocabulary_coverage.py` is ported from the sibling attestation project, which was the
+only one of the five repositories this sweep found nothing in and the only one already testing for
+the class. It fails unless **every member of every vocabulary this tool can emit was produced by
+something**, scored from what the code emitted rather than from what an enum declares.
+
+- **47 members** across eleven vocabularies: `Status`, `Verdict`, `Resolution`, `State`,
+  `SpanState`, `Question`, `Answer`, `Reachability`, `IdentityKind`, `FailureReason`, plus the
+  OpenVEX justification catalogue and the status map.
+- **Members are harvested, never named.** Nothing in the test writes `Resolution.PATH_ABSENT` and
+  calls it covered. The committed examples are read, and the public functions are run over the
+  committed example targets — the resolver over locators the target does and does not satisfy, the
+  call graph over all eighteen functions it defines, the identity function over a record and its
+  degraded forms, the baseline over the loop example's own entries, the VEX emitter over a record
+  carried to each status, and the replay seam asked for a request no recording holds. Whatever
+  comes back is what counts. Naming a member would reintroduce the check that cannot fail.
+- **Eight are allow-listed with a reason the test reads**, in two kinds kept apart on purpose.
+  `deliberate` is a value the design refuses to produce, and `IdentityKind.OPAQUE` is the only
+  one: it is reached solely by a claim carrying no resolved position, no weakness and no usable
+  title, which is a finding with nothing in it. The other seven are `unstaged` — producible, but
+  needing conditions this corpus cannot create for free: six provider failures and one file
+  deletion between runs. The split means debt reads as debt rather than hiding behind a principle.
+- **Three companion tests keep the allow-list honest.** One fails if an allow-listed member starts
+  being produced, so an exemption cannot outlive its reason. One fails on a typo that would
+  silently exempt nothing. One walks the package for `StrEnum` subclasses, so a new vocabulary
+  joins the check or fails it.
+
+The precedent for the allow-list is the sibling model-lineage project's `SignatureState.VALID`:
+unreachable, correct, and correct *because* reachability would have made the tool claim what
+detection cannot establish. That entry is a recorded decision. An unreached member with no entry
+is an oversight, and this test is the difference between the two.
+
+### What adding it surfaced that the hand pass missed
+
+Four things, and the hand clearing above had declared these vocabularies covered:
+
+1. **The VEX emitter had never been exercised for two of its three statuses.** The committed
+   documents hold `affected` only, because the worked example's claim was upheld.  `not_affected`
+   and `under_investigation` — the two labels carrying this tool's whole argument about
+   uncertainty — were emitted by nothing committed.
+2. **`FailureReason.NOT_RECORDED` was unproduced**, though it is the one failure reason that costs
+   nothing to reach and the one that makes offline replay mean anything.
+3. **Two of three `Reachability` verdicts were unproduced** by the harvest as first written,
+   because it asked about four hand-picked lines. Walking all eighteen functions reaches them.
+4. **Two of the first allow-list entries were wrong.** `Status.EXPLOITABLE` and
+   `Resolution.NOT_A_LOCATOR` are produced, and the reverse test said so immediately.
+
+The first two are the useful ones: both are values a reader of the enum would assume the tool
+emits, and neither was reachable from anything committed.
+
+### The standing questions
+
+For every published number: what input would change it. For every invariant asserted in prose:
+which test fails if the enforcement is deleted. The coverage test answers the second for
+vocabularies. Nothing automates the first.

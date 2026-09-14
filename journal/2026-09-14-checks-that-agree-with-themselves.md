@@ -50,6 +50,26 @@ produced by at least one scenario, and the comment beside it names the failure e
 registry's declared strings would check a list of words in a YAML file against itself. A tool that
 has only ever returned `verified` has not been tested.
 
-That check belongs here. This repository has three vocabularies — `Status`, `Verdict`,
-`Resolution` — plus `State`, `SpanState` and `Answer`, and today's clearing was done by hand
-against the committed examples. Doing it by hand is how it goes stale.
+That check belongs here, and it is now here. **The detector's yield was one in seven and it would
+not have caught any of the three defects that prompted the sweep, so `tests/test_vocabulary_coverage.py`
+is the actual remedy and the script is a worklist.**
+
+It covers 47 members across eleven vocabularies and harvests rather than names them: the committed
+examples are read, and the resolver, call graph, identity function, baseline, VEX emitter and
+replay seam are each run over the committed targets. Eight members are allow-listed with a reason
+the test reads, split into `deliberate` (one: an identity for a claim with nothing in it) and
+`unstaged` (seven: six provider failures and a file deletion). Three companion tests stop the
+allow-list rotting — one fails when an exemption stops being true, one on a typo, one when a new
+vocabulary appears.
+
+Writing it found four things the morning's hand pass had cleared. The VEX emitter had never been
+exercised for `not_affected` or `under_investigation` — the two labels that carry this tool's
+entire argument about uncertainty, emitted by nothing committed. `FailureReason.NOT_RECORDED` was
+unproduced, though it costs nothing to reach and is what makes offline replay mean anything. Two
+of three reachability verdicts were unproduced until the harvest walked all eighteen functions
+instead of four chosen lines. And two of my own allow-list entries were simply wrong, which the
+reverse test said immediately.
+
+That is the argument for the test in one paragraph: the hand pass was careful, done the same day,
+by someone looking for exactly this, and it still cleared six vocabularies that had two holes in
+them.
