@@ -1,3 +1,11 @@
+# The committed examples under `docs/eval/` are bytes a digest pins. `record.json` carries the
+# hash of its own quoted spans, and the loop example's baseline carries the hashes it compares
+# against; a hook that appends a newline or trims whitespace changes those bytes and the example
+# stops verifying, which is how the thing the examples exist to demonstrate gets quietly broken by
+# a tidying pass. `pyproject.toml` excludes the same directory from the formatter for the same
+# reason. Both exclusions are load-bearing.
+exclude: ^docs/eval/(worked-example|loop-example)/
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 from docket.hashing import hash_text
 
-__all__ = ["LocatorResolution", "Resolution", "SpanTooLargeError", "resolve_locator"]
+__all__ = ["LocatorResolution", "Resolution", "resolve_locator"]
 
 # `path`, `path:line`, or `path:start-end`. The path is everything before the last colon that is
 # followed only by digits and an optional `-digits`; a Windows drive letter or a path containing a
@@ -64,10 +64,6 @@ class Resolution(StrEnum):
 
     NOT_A_LOCATOR = "not_a_locator"
     """The string does not parse as a path with an optional line range."""
-
-
-class SpanTooLargeError(ValueError):
-    """Raised when a file cannot be read as text. Not a resolution: the caller decides."""
 
 
 @dataclass(frozen=True, slots=True)

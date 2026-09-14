@@ -763,3 +763,52 @@ either way.
 Whether `--fail-on-stale` should be the one gate that defaults on, since a stale decision is the
 only condition here that represents something a person already looked at and that has since
 changed.
+
+## DEC-016 — A dead exception is a promise the module cannot keep
+
+**Date:** 2026-09-14
+**Status:** Accepted
+
+`resolve.SpanTooLargeError` was defined, exported in `__all__`, and never raised. Its docstring
+described a condition its name does not name. It is removed.
+
+### Why
+
+A public exception type is an interface commitment: it tells a caller that a handler for it is
+worth writing. This one told a caller to handle a failure the module does not produce, so the
+handler would never run and the caller would believe a case was covered.
+
+Both conditions it appeared to name are already handled by returning a resolution rather than
+raising. A file that is not readable as UTF-8 text makes `_read_lines` return `None`, and the
+locator resolves `path_absent`. A cited range longer than `MAX_QUOTED_LINES` resolves normally and
+the record carries `truncated`. Neither is an exceptional case here; both are facts about a
+citation, which is what this module returns.
+
+That the name and the docstring disagreed is the more useful signal. Nothing had exercised the
+class, so nothing had forced the two into agreement — the same absence that lets a check agree with
+itself, one level down. It was found by `scripts/audit_unfailable.py`, which looks for exactly
+this: an exception type nothing raises, an enum member nothing assigns, a test that cannot fail.
+See `unfailable-checks.md`.
+
+### Alternatives considered
+
+- **Raise it where the docstring says.** Rejected. Turning a resolution into an exception would
+  make an unreadable file stop a queue of forty claims, when the whole design of the resolver is
+  that a citation that cannot be checked is a result rather than a crash.
+- **Keep it and fix the docstring.** Rejected: that leaves a public name nothing produces, which
+  is the finding rather than a cosmetic problem around it.
+- **Deprecate rather than remove.** Rejected at version 0.3.0 with no dependents. A deprecation
+  period for a name that was never raised preserves nothing.
+
+### Tradeoffs
+
+Removing an exported name is a breaking change to anyone importing it. Nothing in this repository
+did, and `except SpanTooLargeError` in a caller was already dead code, so the break is the
+discovery rather than the damage.
+
+### Open questions
+
+Whether the detector should also refuse an exception type that is raised but never caught anywhere
+in the repository or its tests. That is a weaker signal — a library raises for its callers, not for
+itself — and it would report most of the `ValueError`s in `disposition.py`, which are all
+exercised.
